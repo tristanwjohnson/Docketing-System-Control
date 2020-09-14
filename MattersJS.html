@@ -1,0 +1,1793 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+  $(function () {
+    //on load
+    // if we are on the matters page show all the matters
+    if (jsonData.initParams["pageTitle"] == "Matters") {
+      updateMatterTypeSelect();
+      showMatters("All");
+      var initMatterID = jsonData.initParams["initialMatterID"]; // if we are linked to this page from another show given matter
+      if (initMatterID) {
+        showMatterInfo(initMatterID);
+      }
+    }
+
+  });
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ------------------------------------------------------------------   TYPE SELECT FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  /**
+   * updates the matter type dropdown on the matters page with all matter types from JSON
+   */
+  function updateMatterTypeSelect() {
+    // pull types from JSON
+    var types = Object.keys(jsonData.matterTypes).sort();
+    // hide or show option to create a matter based on user permissions(only level 3)
+    var display = "none";
+    if (jsonData.user["Privileges"] > 2) {
+      display = "flex";
+    }
+    // create HTML for all matter type options
+    var selectStr = '<a class="dropdown-item" data-toggle="modal" data-target="#modal-add-matter-type" style="display:' + display + '; justify-content:space-between" onclick="resetMatterTypeModal()"><p class="mb-0">Create New Type</p><i class="fas fa-plus my-auto mx-0" style="font-size:85%"></i></a>'
+    selectStr += '<a class="dropdown-item" onclick="toggleMatterTypeSelect(\'All\')">All</a>';
+    var typeString, indexOfHyphen, title;
+    for (var i = 0; i < types.length; i++) {
+      typeString = types[i];
+      // get the index of the hyphen to pull out the type name
+      indexOfHyphen = getDashInType(typeString);
+      title = typeString.slice(0, indexOfHyphen);
+      selectStr += '<a class="dropdown-item" onclick="toggleMatterTypeSelect(\'' + types[i] + '\')">' + title + '</a>';
+    }
+    // append HTML to matter type dropdown
+    document.getElementById("matterTypeDropdownMenu").innerHTML = selectStr;
+  }
+
+  /**
+   * toggles which matter type is selcted thus adjusting which matters are shown
+   * 
+   * @param {string} type: type of matter to be shown
+   */
+  function toggleMatterTypeSelect(type) {
+    // set hidden tag as type
+    document.getElementById("selectedType").value = type;
+    // set list title to type
+    if (type == "All") {
+      document.getElementById("matterListName").innerHTML = "Matters";
+      document.getElementById("closedMatterListName").innerHTML = "Closed Matters";
+      document.getElementById("matterTypeButtonTitle").innerHTML = "All";
+    } else {
+      // get type name without -prefix
+      var indexOfHyphen = getDashInType(type);
+      var title = type.slice(0, indexOfHyphen);
+      // update matter list name
+      document.getElementById("matterListName").innerHTML = title;
+      document.getElementById("closedMatterListName").innerHTML = "Closed " + title + " Matters";
+      //update type displayed on select
+      document.getElementById("matterTypeButtonTitle").innerHTML = title;
+    }
+    // hide selected matter card
+    document.getElementById("selectedMatterCardID").style.display = "none";
+    // show matters of given type
+    showMatters(type);
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------   MATTER DISPLAY FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Function that shows the list of matters
+   *
+   * @param {string} type: the type of matter to show (null if want to show all
+   */
+  function showMatters(type) {
+    // if given a type filter matters to only show thoes with a typeName matching "type"
+    var matterList = Object.values(jsonData.matters);
+    if (type != "All") {
+      matterList = matterList.filter(function (m1) { return (m1["TypeName"] == this); }, type);
+    }
+    // sort the matters based on the closest due date (this sort assumes that tasks are already ordered for a given matter -> the first task is due the soonest)
+    var matterList = matterList.sort(compareMattersByDate); // list of matters sorted by due date
+    // populate matter strings with HTML to show list of matters
+    var matterString = generateMatterListHTML(matterList, false);
+    var closedMatterString = generateMatterListHTML(matterList, true);
+    if (!matterString) {
+      matterString = '<li class="list-group-item  ">NO OPEN MATTERS</li>'
+    }
+    if (!closedMatterString) {
+      closedMatterString = '<li class="list-group-item  ">NO CLOSED MATTERS</li>'
+    }
+    //append open and closed matter lists in HTML
+    $("div[id='matterListDiv']").find('li').remove().end().append($(matterString));
+    $("div[id='closedMatterListDiv']").find('li').remove().end().append($(closedMatterString));
+  }
+
+  /**
+   * Function to show the information for the selected matter.
+   * Also handles selection/deselection of matters.
+   *
+   * @param {string} matterID: the ID of the matter that was just selected
+   */
+  function showMatterInfo(matterID) {
+    // Unselect the previously selected matter
+    var prevSelectedID = document.getElementById("selectedMatterID").value;
+    if (prevSelectedID) {
+      var selectedElem = document.getElementById(prevSelectedID);
+      if (selectedElem) {
+        selectedElem.className = "list-group-item";
+      }
+    }
+    // Select the new matter on the UI
+    document.getElementById(matterID).className = "list-group-item hoverable bg-light-dark text-dark";
+    // Get matter and client from JSON
+    var matter = jsonData.matters[matterID];
+    var client = jsonData.clients[matter.ClientID];
+    // Set the hidden tags
+    document.getElementById("selectedMatterID").value = matterID;
+    document.getElementById("selectedClientID").value = client["ID"];
+    // set the associated note type to store "matter" so it knows which table to associate notes with
+    document.getElementById("associatedNoteType").value = "matter";
+    //Update button display based on user privileges
+    updateMatterCardPrivileges(matter["CreatedBy"], "Matter");
+    // show Title to be client name - docket code
+    var titleStr = '<h5 class="card-title mb-0 ">' + matter.DocketNo + '    <a target="_blank" href="https://drive.google.com/drive/folders/' + matter.FolderID + '"><i class="fab fa-google-drive"></i></a></h5>';
+    $("div[id='matterTitleDiv']").find('h5').remove().end().append($(titleStr));
+    // Show the MetaData for this matter
+    // get the status
+    var status = matter.DateClosed;
+    if (status) { // status == "Closed"
+      var date = new Date(status)
+      status = "Closed on " + date.toDateString();
+    } else {
+      status = "Active";
+      document.getElementById("reopenMatterBtnID").style.display = "none";
+    }
+    document.getElementById("matterStatusID").innerHTML = "Status: <b>" + status + "</b>";
+    // get the type name
+    var typeName = matter.TypeName;
+    if (typeName) {
+      // get name of type without "-prefix"
+      var indexOfHyphen = getDashInType(typeName);
+      var title = matter.TypeName.slice(0, indexOfHyphen);
+      document.getElementById("matterTypeID").innerHTML = "Type: <b>" + title + "</b>";
+    } else {
+      document.getElementById("matterTypeID").innerHTML = "Type: <b>N/A</b>";
+    }
+    // show the responsible member
+    var respMem = matter.ResponsibleMember;
+    if (respMem) {
+      document.getElementById("matterResponsibleMemberID").innerHTML = "Responsible Member: <b>" + jsonData.members[respMem]["FirstName"] + " " + jsonData.members[respMem]["LastName"] + "</b>";
+    } else {
+      document.getElementById("matterResponsibleMemberID").innerHTML = "Responsible Member: <b>Not Assigned</b>";
+    }
+    // show matter description
+    var description = matter.Description;
+    if (description) {
+      document.getElementById("matterDescriptionID").innerHTML = "Description: <b>" + description + "</b>";
+    } else {
+      document.getElementById("matterDescriptionID").innerHTML = "Description: <b>N/A</b>";
+    }
+    // Show the active tasks for this matter
+    var taskStr = getActiveTaskStr(matter.TaskID);
+    $("div[id='matterTaskListDiv']").find('li').remove().end().append($(taskStr));
+    // show old task timeline for this matter
+    var timelineStr = getTaskTimelineStr(matter.TaskID);
+    $("div[id='taskTimeline']").find('div').remove().end().append($(timelineStr));
+    // show close button if there are no active tasks and hide if there are
+    if (taskStr != '<li class="list-group-item">NO ACTIVE TASKS</li>' || status != "Active") {
+      document.getElementById("closeMatterBtnID").style.display = "none";
+    }
+    // Show the notes for this matter
+    var notesStr = getNoteStr(matter.NoteID);
+    $("div[id='matterNoteListDiv']").find('li').remove().end().append($(notesStr));
+    // show client information
+    // show client name as link to client page
+    var url = jsonData.initParams["url"] + "?page=Contacts";
+    document.getElementById("matterClientName").innerHTML = '<h5>Client: <a href="' + url + '&initialClientID=' + client.ID + '">' + client.ClientName + '</a></h5>';
+    //show the notes for this client
+    notesStr = getNoteStr(client.NoteID);
+    $("div[id='clientNoteListDiv']").find('li').remove().end().append($(notesStr));
+    // show creation information
+    var creatorStr = "<p style = 'margin:0; font-size:0.7rem'> Created By: <b>" + matter.CreatedBy + "</b></p><p style = 'margin:0; font-size:0.7rem'>Last Modified By: <b>" + matter.ModifiedBy + "</b></p>";
+    // pull dates and convert to a readable formate
+    var created = new Date(matter.DateCreated);
+    var dateCreated = created.toDateString();
+    var modified = new Date(matter.DateModified);
+    var lastModified = modified.toDateString();
+    var dateStr = "<p style = 'margin:0; font-size:0.7rem'> Date Created: <b>" + dateCreated + "</b></p> <p style = 'margin:0; font-size:0.7rem'>Last Modified: <b>" + lastModified + "</b></p>";
+    $("div[id='createdByDivMatter']").find('p').remove().end().append($(creatorStr));
+    $("div[id='dateCreatedDivMatter']").find('p').remove().end().append($(dateStr));
+    // show this div after all information has been added
+    document.getElementById("selectedMatterCardID").style.display = "block";
+  }
+
+  /**
+   * hide matter card and deselect matter
+   */
+  function hideMatterInfo() {
+    //hide info card
+    document.getElementById("selectedMatterCardID").style.display = "none";
+    //unselect matter
+    var selectedID = document.getElementById("selectedMatterID").value;
+    if (selectedID) {
+      document.getElementById(selectedID).className = "list-group-item hoverable ";
+      document.getElementById("selectedMatterID").value = null;
+    }
+  }
+
+  // -------------------------------   MATTER DISPLAY HELPER FUNCTIONS   ---------------------------------------
+
+  /**
+   * Hides and shows the add note button on each note collapse in the matter info card when the collapse is toggled
+   * 
+   * @param {string} id: HTML ID of the add note btn in question on the matter card
+   */
+  function toggleAddNoteBtn(id) {
+    var btnStyle = document.getElementById(id).style.display;
+    if (btnStyle != "none") {
+      document.getElementById(id).style.display = "none";
+    } else {
+      document.getElementById(id).style.display = "inline-block";
+    }
+  }
+
+  /**
+   * Populates type specific info modal with type info of selected client
+   */
+  function populateTypeInfoModal() {
+    // pull matter info from JSON
+    var selectedMatterId = document.getElementById("selectedMatterID").value;
+    var matter = jsonData.matters[selectedMatterId];
+    var matterTypeInfo = jsonData.matterTypeData[matter["TypeID"]];
+    // make type form HTML
+    var fieldNames = jsonData.matterTypes[matter["TypeName"]];
+    // create type specific info form HTML
+    var dashIndex = getDashInType(matter["TypeName"]);
+    var titleStr = matter["TypeName"].slice(0, dashIndex) + " Specific Information";
+    var fieldRow = '';
+    var infoList = '';
+    var fieldName;
+    for (var i = 0; i < fieldNames.length; i++) {
+      fieldName = fieldNames[i];
+      fieldRow = '<p>' + fieldName + ': <b>' + (matterTypeInfo[fieldName] || "Not Given") + '</b></p>';
+      infoList += fieldRow;
+    }
+    // show type specific info form
+    document.getElementById("matterTypeInfoModalLable").innerHTML = titleStr;
+    document.getElementById("matterTypeInfoModalBody").innerHTML = infoList;
+  }
+
+  // ------------------------------------------ Search Matter Functions ------------------------------------------
+
+  /**
+   * Function that toggles whether the matter search bar is visible or not, also resets the matter lists
+   */
+  function toggleMatterSearch() {
+    var searchBar = document.getElementById("matterListSearchBar");
+    //clear search value
+    document.getElementById("matterListSearchValue").value = null;
+    if (searchBar.style.display == "none") { //searchBar is hidden
+      searchBar.style.display = "inline";
+    } else { //searchBar is shown
+      // hide searchBar
+      searchBar.style.display = "none";
+      // reset lists
+      var type = document.getElementById("selectedType").value;
+      toggleMatterTypeSelect(type);
+    }
+  }
+
+  /*
+   * Function that clears the closed matter search bar and resets the matter lists
+   */
+  function resetClosedMatterSearch() {
+    //clear search value
+    document.getElementById("closedMatterListSearchValue").value = null;
+    // reset matter lists
+    var type = document.getElementById("selectedType").value;
+    toggleMatterTypeSelect(type);
+  }
+
+  /**
+   * Function to search the open matter list
+   */
+  function searchMatterList() {
+    // Get the search term
+    var searchTerm = document.getElementById("matterListSearchValue").value;
+    // Generate the html to be put into the matter list
+    var matterString = searchMatterListHelper(searchTerm, false);
+    // if the matter string is false, set it to show that there are no open matters
+    if (!matterString) {
+      matterString = '<li class="list-group-item ">NO OPEN MATTERS</li>';
+    }
+    // Place the matter string into the html
+    $("div[id='matterListDiv']").find('li').remove().end().append($(matterString));
+  }
+
+  /**
+   * Function to search the closed matter list
+   */
+  function searchClosedMatterList() {
+    // Get the search term
+    var searchTerm = document.getElementById("closedMatterListSearchValue").value;
+    // Generate the html to be put into the matter list
+    var matterString = searchMatterListHelper(searchTerm, true);
+    // if the matter string is false, set it to show that there are no open matters
+    if (!matterString) {
+      matterString = '<li class="list-group-item ">NO CLOSED MATTERS</li>';
+    }
+    // Place the matter string into the html
+    $("div[id='closedMatterListDiv']").find('li').remove().end().append($(matterString));
+  }
+
+  /**
+   * Helper function to search through a list of matters and return the html for the appropriate results
+   *
+   * @param {string} searchTerm: the term being searched for
+   * @param {boolean} closed: a boolean representing whther or not we wish to search through closed matters or active matters
+   *                          - true: search only closed matters
+   *                          - false: search only active matters
+   * 
+   * @return {string} returns the html for all of the list items that came up in the search
+   */
+  function searchMatterListHelper(searchTerm, closed) {
+    // hide selected card
+    document.getElementById("selectedMatterCardID").style.display = "none";
+    var refinedList = [];
+    // Iterate through the matters and refine the list to matters whose docket numbers contain the search term
+    var matters = Object.values(jsonData.matters);
+    var matter;
+    for (var i = 0; i < matters.length; i++) {
+      matter = matters[i];
+      if (matter["DocketNo"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(matter);
+      }
+    }
+    // sort the search results by date
+    refinedList.sort(compareMattersByDate);
+    // populate matter string with HTML to show list of matters
+    var matterString = generateMatterListHTML(refinedList, closed);
+    return matterString;
+  }
+
+  // -------------------------------------------------------------- SORT MATTER FUNCTIONS  -------------------------------------------------------------- 
+
+  /**
+   * function to get matters currently displayed in given list - used for sorting 
+   * 
+   * @param {string} listID: ID of the list element to we want to pull the matters from
+   * 
+   * @return {object} returns a list of matter ids that were being displayed in a given list
+   */
+  function getMattersFromList(listID) {
+    var div = document.getElementById(listID);
+    // get list of HTML elemets each a kanban item
+    var innerLis = div.getElementsByTagName('li');
+    var idList = [];
+    var name, id;
+    for (var i = 0; i < innerLis.length; i++) {
+      id = innerLis[i].id
+      idList.push(id);
+    }
+    return idList;
+  }
+
+  /**
+   * Function that sorts the matters currently stored in the html given a certain 'direction'
+   *
+   * @param {string} direction: a string representing which manner to sort the matters by (e.g. A to Z)
+   */
+  function matterListSortBy(direction, listID) {
+    // pull list from html id = "matterListDiv"
+    var matterIDs = getMattersFromList(listID);
+    var matters = [];
+    for (var i = 0; i < matterIDs.length; i++) {
+      matters.push(jsonData.matters[matterIDs[i]]);
+    }
+    var refinedList;
+    if (direction == "newToOld") {
+      // get list of matters in order of soonest task first
+      refinedList = matters.sort(compareMattersByDate);
+    } else if (direction == "oldToNew") {
+      // get list of matters in order of soonest task last
+      refinedList = matters.sort(compareMattersByDate).reverse();
+    } else if (direction == "AtoZ") {
+      // get list of matters in Alphabetical order
+      refinedList = matters.sort(compareMattersByDocketNo);
+    } else if (direction == "ZtoA") {
+      // get list of matters in reverse Alphabetical order
+      refinedList = matters.sort(compareMattersByDocketNo).reverse();
+    }
+    // set tag for function to know if list is of open or closed matters
+    var closed = true;
+    if (listID == "matterListDiv") {
+      closed = false;
+    }
+    // get HTML list of matters 
+    var matterString = generateMatterListHTML(refinedList, closed);
+    if (!matterString) {
+      matterString = '<li class="list-group-item ">NO MATTERS</li>';
+    }
+    //append list options in HTML dynamically
+    $("div[id='" + listID + "']").find('li').remove().end().append($(matterString));
+  }
+
+
+  /**
+   * Function that generates the html for a sorted list
+   *
+   * @param {object} refinedList: the filtered and sorted list we wish to have the html for
+   * @param {boolean} closed: a boolean representing whther or not we wish to search through closed matters or active matters
+   *                          - true: search only closed matters
+   *                          - false: search only active matters
+   * @return {string} returns the html for all of the list items that came up in the search
+   */
+  function generateMatterListHTML(refinedList, closed) {
+    // create html and show list 
+    var matterID, matterDocketNo, matterTaskIDs, matterTaskDate, listOption;
+    var matterString = "";
+    for (var i = 0; i < refinedList.length; i++) {
+      // Get the matter ID, matter Docket No, and date of the upcoming task
+      matterID = refinedList[i].ID;
+      matterDocketNo = refinedList[i].DocketNo;
+      matterTaskIDs = refinedList[i].TaskID;
+      // Null check to make sure that the matter has tasks
+      if (matterTaskIDs) {
+        matterTaskIDs = matterTaskIDs.split(",");
+        var currTask;
+        // Get the date of the closest upcoming task for this matter (recall, tasks are in sorted order)
+        matterTaskDate = "No Tasks Due";
+        for (var j = 0; j < matterTaskIDs.length; j++) {
+          currTask = jsonData.tasks[matterTaskIDs[j]];
+          // Once a task that hasn't been completed is found, break out of this loop
+          if (!currTask["DateCompleted"]) {
+            matterTaskDate = new Date(currTask["DueDate"]);
+            matterTaskDate = matterTaskDate.toDateString();
+            break;
+          }
+        }
+      } else {
+        matterTaskDate = "No Tasks Assigned";
+      }
+      listOption = '<li class="list-group-item hoverable" id =' + matterID + ' style="justify-content:space-between; display:flex" onclick = "showMatterInfo(\'' + matterID + '\')"><p class="my-0">' + matterDocketNo + '</p><p class="my-0" style="font-size:0.85rem">' + matterTaskDate + '</p></li>';
+      // Use the 'closed' boolean to filter either open or closed matters
+      if (closed) {
+        if (refinedList[i]["DateClosed"]) { // if there is a value in the dateClosed column
+          matterString += listOption;
+        }
+      } else {
+        if (!refinedList[i]["DateClosed"]) { // if there isn't a value in the dateClosed column
+          matterString += listOption;
+        }
+      }
+    }
+    return matterString;
+  }
+
+  // ------------------------------- SORTING (COMPARE) FUNCTIONS -------------------------------
+
+  /**
+    * Function that compares two matters based on the docketNo. First compares by leading string (docket code- prefix) and then if they are equale it compares by the preceeding integers
+    *
+    * @param {object} m1: matter 1 dictionary
+    * @param {object} m2: matter 2 dictionary
+    * @return returns a negative(-) int if m1 comes before m2 in the sort, a positive(+) int if m2 comes before m1, and 0 if they are equal
+    */
+  function compareMattersByDocketNo(m1, m2) {
+    // pull dockect numbers from matters
+    var docketNo1 = m1["DocketNo"];
+    var docketNo2 = m2["DocketNo"];
+    // split dockent number into a string and number
+    var dash1 = getDashInType(docketNo1);
+    var typeDash1 = getDashInType(m1["TypeName"]);
+    var prefixLen1 = m1["TypeName"].slice(typeDash1 + 1).length;
+    var string1 = docketNo1.slice(0, dash1 + prefixLen1);
+    var num1 = parseInt(docketNo1.slice(dash1 + prefixLen1 + 1));
+
+    var dash2 = getDashInType(docketNo2);
+    var typeDash2 = getDashInType(m2["TypeName"]);
+    var prefixLen2 = m2["TypeName"].slice(typeDash2 + 1).length;
+    var string2 = docketNo2.slice(0, dash2 + prefixLen2);
+    var num2 = parseInt(docketNo2.slice(dash2 + prefixLen2 + 1));
+    // compare by docket string
+    var compareVal = string1.localeCompare(string2);
+    if (compareVal == 0) { // if same string compare 
+      compareVal = num1 - num2;
+    }
+    return compareVal;
+  }
+
+  /**
+    * Function that compares two matters based on the dates of their respective tasks. 
+    * This function assumes that the tasks for each matter are already sorted based on their due dates such that the first task is due the soonest for each matter
+    * We want to sort based on the date of the first upcoming incomplete task
+    *
+    * @param {object} m1: matter 1
+    * @param {object} m2: matter 2
+    * @return returns -1 if m1 comes before m2 in the sort, 1 if m2 comes before m1, and 0 if they are equal
+    */
+  function compareMattersByDate(m1, m2) {
+    // Get the upcoming task from matters 1 and 2
+    var task1IDs = m1["TaskID"];
+    var task2IDs = m2["TaskID"];
+    // If no tasks exist for this matter, it should be at the end of the list, so return 1
+    if (!task1IDs) {
+      if (!task2IDs) { // if neither matter task ids, compare by docket number
+        return compareMattersByDocketNo(m1, m2);
+      } // else task 2 goes first as it has tasks
+      return 1;
+    }
+    // if both matters have tasks get the most recent incomplete task for each
+    task1IDs = task1IDs.split(",");
+    var task1, currTask;
+    for (var i = 0; i < task1IDs.length; i++) {
+      currTask = jsonData.tasks[task1IDs[i]];
+      if (!currTask["DateCompleted"]) {
+        task1 = currTask;
+        break;
+      }
+    }
+    if (!task1) { // if all tasks are incomplete task 2 goes first
+      return 1;
+    }
+    // Get the upcoming task from matter 1
+    var task2IDs = m2["TaskID"];
+    // If no tasks exist for this matter, it should be at the end of the list, so return -1
+    if (!task2IDs) {
+      return -1;
+    }
+    // find the most recent incomplete task for matter 2
+    task2IDs = task2IDs.split(",");
+    var task2;
+    for (var i = 0; i < task2IDs.length; i++) {
+      currTask = jsonData.tasks[task2IDs[i]];
+      if (!currTask["DateCompleted"]) {
+        task2 = currTask;
+        break;
+      }
+    }
+    if (!task2) { // if all of task 2's tasks are completed task 1 goes first
+      return -1;
+    }
+    // else get the due date for the most recent incomplete task for each matter 
+    //         Due dates are required for tasks, so null checks are not necessary for comparing them
+    var t1Date = new Date(task1["DueDate"]);
+    var t2Date = new Date(task2["DueDate"]);
+    if (t1Date < t2Date) { // compare by date 
+      return -1;
+    } else if (t1Date > t2Date) {
+      return 1;
+    } else { // if the dates are the same compare by docket number
+      return compareMattersByDocketNo(m1, m2);
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------   CREATE MATTER TYPE FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Shows a new field option in the html so that the user can add a new field to the matter type that they are creating.
+   */
+  function addTypeField() {
+    // create a unique ID for the form row
+    var ID = Math.random().toString(36).substring(2);
+    // create form row HTML
+    var newField = '<div class="input-group mb-3" id="' + ID + '" name="formRowName"><input id="input_' + ID + '" type="text" class="form-control" placeholder="Field Name"><div class="input-group-append">';
+    newField += '<button class="btn btn-outline-secondary btn-icon-only" type="button" onclick="closeTypeField(\'' + ID + '\')">';
+    newField += '<span class="btn-inner--icon"><i class="fas fa-times"></i></span></button></div></div>';
+    // add HTML to new type form
+    $("form[id='addTypeForm']").find('div[class="form-row"]').end().append($(newField));
+  }
+
+  /**
+   * Function that removes a new field input from the html
+   * 
+   * @param {string} fieldID: the id of type field to be removed
+   */
+  function closeTypeField(fieldID) {
+    $("form[id='addTypeForm']").find("div[id='" + fieldID + "']").remove();
+  }
+
+  /**
+   * Function that adds the the new matter type to the database by creating a corresponding sheet for it in the matter spreadsheet.
+   */
+  function addMatterType() {
+    // hide the error messages
+    hideMatterTypeErrorMessages();
+    // pull basic info from modal
+    var title = document.getElementById("input_typeTitle").value;
+    var prefix = document.getElementById("input_typePrefix").value;
+    var sheetName = title + "-" + prefix;
+    // split up all current matter type titles into a list of types and a list of prefixs
+    var matterTitles = [];
+    var matterPrefixes = [];
+    var matterTypes = Object.keys(jsonData.matterTypes);
+    var typeString, indexOfHyphen;
+    for (var i = 0; i < matterTypes.length; i++) {
+      typeString = matterTypes[i];
+      indexOfHyphen = getDashInType(typeString);
+      matterTitles.push(typeString.slice(0, indexOfHyphen).toLowerCase());
+      matterPrefixes.push(typeString.slice(indexOfHyphen + 1).toLowerCase());
+    }
+    // ensure inputted information is valid
+    if (!title || !prefix) {// break out if title or prefix is not given
+      if (!title) {
+        document.getElementById("input_typeTitle").className = "form-control is-invalid";
+      } else {
+        document.getElementById("input_typeTitle").className = "form-control";
+      }
+      if (!prefix) {
+        document.getElementById("input_typePrefix").className = "form-control px-2 is-invalid";
+      } else {
+        document.getElementById("input_typePrefix").className = "form-control px-2";
+      }
+      // title or prefix is null -> show error message and break 
+      document.getElementById("addMatterTypeNullFieldsMessage").style.display = "block";
+      return;
+    } else if (matterTitles.includes(title.toLowerCase())) { // break out if title is no unique
+      // title is not unique -> show error message and break 
+      document.getElementById("addMatterTypeUniqueNameMessage").style.display = "block";
+      return;
+    } else if (matterPrefixes.includes(prefix.toLowerCase())) { // breakout if prefix is not unique
+      // prefix is not unique -> show error message and break 
+      document.getElementById("addMatterTypeUniquePrefixMessage").style.display = "block";
+      return;
+    }
+    // at this point all basic inputs are valid
+    // hide the add button and show the loading button
+    document.getElementById("addMatterTypeBtnID").style.display = "none";
+    document.getElementById("addMatterTypeBtnIDLoading").style.display = "block";
+    // get list of HTML elements from each input field
+    var innerFields = document.getElementsByName('formRowName');
+    // iterate through inputed fields creating a list - checking for completion 
+    var fieldList = [sheetName];
+    var value, id;
+    for (var i = 0; i < innerFields.length; i++) {
+      id = innerFields[i].id;
+      value = document.getElementById('input_' + id).value;
+      if (value != "") {
+        if (fieldList.includes(value)) {  // the field value is not unique so break and show an error msg
+          document.getElementById("addMatterTypeUniqueFieldMessage").style.display = "block";
+          // stop buttons loading
+          document.getElementById("addMatterTypeBtnIDLoading").style.display = "none";
+          document.getElementById("addMatterTypeBtnID").style.display = "block";
+          return;
+        } else { // the field value is unique so push it onto the list
+          fieldList.push(value);
+        }
+      }
+    }
+    // call to server to create a matter type
+    google.script.run.withSuccessHandler(onSuccessAddTypeToSheet).withFailureHandler(onFailAddTypeToSheet).addTypeToSheet(fieldList);
+  }
+
+
+  /**
+   * onSuccess called when type is added to the matter sheet
+   * 
+   * @param {object} newTypeInfo: information passed on from server for JSON
+   *                             formatted as [sheetName, fieldList] 
+   */
+  function onSuccessAddTypeToSheet(newTypeInfo) {
+    var sheetName = newTypeInfo[0];
+    var fieldList = newTypeInfo[1];
+    // update jsonData with the new matter type
+    var matterTypes = jsonData.matterTypes;
+    matterTypes[sheetName] = fieldList;
+    jsonData.matterTypes = matterTypes;
+    // update the matter type filter list
+    updateMatterTypeSelect();
+    // show the success message
+    document.getElementById("addMatterTypeSuccessMessage").style.display = "block";
+    // hide the loading button and show the add button again
+    document.getElementById("addMatterTypeBtnIDLoading").style.display = "none";
+    document.getElementById("addMatterTypeBtnID").style.display = "block";
+  }
+
+  /**
+   * function to alert user that the server call to create a matter type failed 
+   */
+  function onFailAddTypeToSheet(err) {
+    alert("There was an error in creating this matter type. Please refresh this page. " + err);
+    // hide the loading button and show the add button again
+    document.getElementById("addMatterTypeBtnIDLoading").style.display = "none";
+    document.getElementById("addMatterTypeBtnID").style.display = "block";
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------   CREATE MATTER TYPE HELPER FUNCTIONS   ---------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Function that hides the "Matter Type Added Successfully" message
+   */
+  function hideMatterTypeSuccessMessage() {
+    document.getElementById("addMatterTypeSuccessMessage").style.display = "none";
+  }
+
+  /**
+   * hides the error messages in the matter type modal
+   */
+  function hideMatterTypeErrorMessages() {
+    // hide the error messages
+    document.getElementById("addMatterTypeNullFieldsMessage").style.display = "none";
+    document.getElementById("addMatterTypeUniqueNameMessage").style.display = "none";
+    document.getElementById("addMatterTypeUniquePrefixMessage").style.display = "none";
+    document.getElementById("addMatterTypeUniqueFieldMessage").style.display = "none";
+  }
+
+  /**
+   * resets fields in matter type modal back to initial state
+   */
+  function resetMatterTypeModal() {
+    // hide any messages
+    hideMatterTypeSuccessMessage();
+    hideMatterTypeErrorMessages();
+    // clear the title and prefix fields
+    document.getElementById("input_typeTitle").value = null;
+    document.getElementById("input_typePrefix").value = null;
+    document.getElementById("input_typeTitle").className = "form-control";
+    document.getElementById("input_typePrefix").className = "form-control px-2";
+    // remove all the "new field" fields
+    $('div[name="formRowName"]').remove();
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------------   MATTER MODAL FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  // -----------------------------  Show modal  -------------------------------------
+
+
+  /**
+   * Called when add/edit matter modal is opend to do initial set up of modal based on the action passed in
+   * 
+   * @param {string} action: the action of the matter modal (add or edit)
+   */
+  function onOpenMatterModal(action) {
+    // Reset the modal
+    resetAddEditMatterModal();
+    // populate matter type select
+    populateMatterTypeFormSelect();
+    // populate client list
+    showClientsMatterModal();
+    // populate member list
+    showMembersMatterModal();
+    if (action == "add") {
+      // hide selected matter card
+      hideMatterInfo();
+      // Show the add matter button
+      document.getElementById("addMatterBtnID").style.display = "block";
+      // Set the title to be "Add Matter"
+      document.getElementById("matterModalTitle").innerHTML = "Add Matter";
+    } else if (action == "edit") {
+      // show edit matter button
+      document.getElementById("editMatterBtnID").style.display = "block";
+      // Set the title to be "Edit Matter"
+      document.getElementById("matterModalTitle").innerHTML = "Edit Matter";
+      //populate matter modal with selected matter info
+      populateMatterModal();
+    } else { // and error occured alert the user as such
+      alert(action + " not defined as an action for matter modal");
+    }
+  }
+
+  /**
+   * Called when a type is chosen in the add/edit matter modal to make and show matter type form fields to be filled out
+   */
+  function showMatterTypeForm() {
+    // get matter type from select
+    var type = document.getElementById("newMatterType").value;
+    // get client attached to the matter if one given
+    var clientID = document.getElementById("selectedMatterClientID").value;
+    if (type == "Not Specified") { //if no type selected clear html
+      document.getElementById("matterTypeFields").innerHTML = "";
+      if (clientID) { // if a client has been selected
+        // get docket code and add it to docketNo display 
+        var docketCode = jsonData.clients[clientID]["DocketCode"];
+        document.getElementById("docketCodePrepend").innerHTML = docketCode + "-";
+      } else { // else clear prefix on docket No display
+        document.getElementById("docketCodePrepend").innerHTML = "";
+      }
+      return; // break if no type specified
+    }
+    // display prefix before docket no
+    if (clientID) {
+      // get docket code
+      var docketCode = jsonData.clients[clientID]["DocketCode"];
+      // get prefix
+      var dashIndex = getDashInType(type);
+      var prefix = type.slice(dashIndex + 1);
+      // append prefix to docketNo in UI
+      document.getElementById("docketCodePrepend").innerHTML = docketCode + "-" + prefix;
+      // suggest a Docket No. based on next available number for the client and matter type
+      suggestDocketNo(clientID, type);
+    } else { // there is no client selected
+      var dashIndex = getDashInType(type);
+      var prefix = type.slice(dashIndex + 1);
+      // display matter type prefix in UI
+      document.getElementById("docketCodePrepend").innerHTML = prefix;
+    }
+    // make type form HTML
+    var fieldNames = jsonData.matterTypes[type];
+    // create type specific info form HTML
+    var dashIndex = getDashInType(type)
+    var formStr = '<h5 class=" mt-3" style="text-align:left">' + type.slice(0, dashIndex) + ' Specific Info</h5>';
+    var formInput = '';
+    var fieldName;
+    for (var i = 0; i < fieldNames.length; i++) {
+      fieldName = fieldNames[i];
+      formInput = '<div class = "form-row"><div class="col-3 my-auto"><p class="my-auto" style="text-align:right">' + fieldName + '</p></div><div class="col-9"><input type="text" class="form-control" id="' + fieldName + '" placeholder="' + fieldName + '"></div></div><br>';
+      formStr += formInput;
+    }
+    // show type specific info form
+    document.getElementById("matterTypeFields").innerHTML = formStr;
+    document.getElementById("matterTypeFields").style.display = "block";
+  }
+
+  // -----------------------------  Show modal helper functions -------------------------------------
+  /**
+   * populate the matter modal with information of a selceted matter if editing a matter
+   */
+  function populateMatterModal() {
+    var matterID = document.getElementById("selectedMatterID").value;
+    // get matter from json
+    var matter = jsonData.matters[matterID];
+    // fill in the matter information
+    document.getElementById("newMatterType").value = matter["TypeName"];
+    // set type select to disabled so it cannot be changed on edit
+    document.getElementById("newMatterType").disabled = true;
+    // show matter type form fields
+    showMatterTypeForm();
+    document.getElementById("matterDescription").value = matter["Description"] || "";
+    // set assigned client and members
+    selectMatterAssignedMember(matter["ResponsibleMember"]);
+    selectMatterClient(matter["ClientID"]);
+    // assuming docket number is of the form AAA(A)-(Prefix||#)##
+    var docketNo = matter["DocketNo"];
+    var NumDashIndex = getDashInType(matter["DocketNo"]);
+    if (matter["TypeName"] == "Patent-") {
+      // for patents the dockect number has 3+ digits and no prefix
+      document.getElementById("matterDocketNumber").value = matter["DocketNo"].slice(NumDashIndex + 1);
+    } else {
+      var typeDashIndex = getDashInType(matter["TypeName"]);
+      var prefixLen = matter["TypeName"].slice(typeDashIndex + 1).length;
+      // for all other matter types the dockect number has a set prefix and the 2+ digits
+      document.getElementById("matterDocketNumber").value = matter["DocketNo"].slice(NumDashIndex + prefixLen + 1);
+    }
+    // populate type fields with known information
+    var fieldNames = jsonData.matterTypes[matter["TypeName"]];
+    var typeData = jsonData.matterTypeData[matter["TypeID"]];
+    var fieldName;
+    for (var i = 0; i < fieldNames.length; i++) {
+      fieldName = fieldNames[i];
+      document.getElementById(fieldName).value = typeData[fieldName] || "";
+    }
+
+  }
+
+  /**
+   * populates the type dropdown in the add/edit matter modal with matter types from JSON 
+   */
+  function populateMatterTypeFormSelect() {
+    var types = Object.keys(jsonData.matterTypes).sort(); // sort types alphabetically
+    // create HTML for each matter type option
+    var selectStr = '<option value="Not Specified">Select a Type</option>';
+    var type;
+    for (var i = 0; i < types.length; i++) {
+      type = types[i]
+      var dashIndex = getDashInType(type);
+      selectStr += '<option value="' + type + '">' + type.slice(0, dashIndex) + '</option>';
+    }
+    // update matter type select in modal
+    document.getElementById("newMatterType").innerHTML = selectStr;
+  }
+
+  /**
+   * Generate and Shows list of active clients for the add/edit matter modal
+   */
+  function showClientsMatterModal() {
+    // show the actual client list
+    var activeList = Object.values(jsonData.clients).filter(function (c) { return c["Status"] == "Active" });
+    var clientList = activeList.sort(function (d1, d2) { return d1["ClientName"].localeCompare(d2["ClientName"]); }); // list of clients sorted alphabetically by ClientName
+    // populate client string with HTML to show list of clients
+    var clientString = "";
+    var listOption;
+    for (var i = 0; i < clientList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + clientList[i].ID + ' style="text-align:left" onclick = "selectMatterClient(\'' + clientList[i].ID + '\')">' + clientList[i].ClientName + '</li>';
+      clientString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='matterClientListDiv']").find('li').remove().end().append($(clientString));
+  }
+
+  /**
+   * Shows list of members in the add/edit matter modal
+   */
+  function showMembersMatterModal() {
+    // show the actual client list
+    var memberList = Object.values(jsonData.members).sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]); }); // list of clients sorted alphabetically by ClientName;
+    // populate client string with HTML to show list of clients
+    var memberString = "";
+    var listOption;
+    for (var i = 0; i < memberList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + memberList[i].ID + ' style="text-align:left" onclick = "selectMatterAssignedMember(\'' + memberList[i].ID + '\')">' + memberList[i].FirstName + " " + memberList[i].LastName + '</li>';
+      memberString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='matterMemberListDiv']").find('li').remove().end().append($(memberString));
+  }
+
+  /**
+   * Shows which client is chosen
+   *
+   * @param {string} id: the id of the client that was selected
+   */
+  function selectMatterClient(id) {
+    document.getElementById("selectedMatterClientName").innerHTML = "Selected Client: " + jsonData.clients[id].ClientName;
+    document.getElementById("selectedMatterClientID").value = id;
+    var type = document.getElementById("newMatterType").value;
+    if (type != "Not Specified") {// if a type has been selected pass along its prefix
+      // get prefix from typeName
+      var dashIndex = getDashInType(type);
+      var prefix = type.slice(dashIndex + 1);
+      document.getElementById("docketCodePrepend").innerHTML = jsonData.clients[id].DocketCode + "-" + prefix;
+      suggestDocketNo(id, type);
+    } else {
+      document.getElementById("docketCodePrepend").innerHTML = jsonData.clients[id].DocketCode + "-";
+    }
+  }
+
+  /**
+   * Shows which member is assigned to a matter in the add/edit matter modal
+   * 
+   * @param {string} id: the id of the member who has been selected
+   */
+  function selectMatterAssignedMember(id) {
+    var member = jsonData.members[id];
+    document.getElementById("selectedAssignedMemberName").innerHTML = "Assigned Member: " + member.FirstName + " " + member.LastName;
+    document.getElementById("selectedAssignedMemberID").value = id;
+  }
+
+  // -------------------------------  Search  ---------------------------------------
+
+  /**
+    * Using the term in the search bar, this function populates the client list with only clients whose names or docket code include the term
+    */
+  function searchMatterClientList() {
+    // Get the search term
+    var searchTerm = document.getElementById("matterClientListSearchValue").value;
+    // get list of active clients
+    var activeList = Object.values(jsonData.clients).filter(function (c) { return c["Status"] == "Active" });
+    var refinedList = [];
+    // Iterate through the clients and refine the list to clients whose names include the search term
+    var client;
+    for (var i = 0; i < activeList.length; i++) {
+      client = activeList[i];
+      if (client["ClientName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(client);
+      } else if (client["DocketCode"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(client);
+      }
+    }
+    // Alphabetize the search results
+    refinedList.sort(function (c1, c2) { return c1["ClientName"].localeCompare(c2["ClientName"]) });
+    // populate client string with HTML to show list of clients
+    var clientString = "";
+    var listOption;
+    for (var i = 0; i < refinedList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + refinedList[i].ID + ' style="text-align:left" onclick = "selectMatterClient(\'' + refinedList[i].ID + '\')">' + refinedList[i].ClientName + '</li>';
+      clientString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='matterClientListDiv']").find('li').remove().end().append($(clientString));
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the member list with only members whose first or last names include the term
+   */
+  function searchMatterMemberList() {
+    // Get the search term
+    var searchTerm = document.getElementById("matterMemberListSearchValue").value;
+    // get list of members
+    var activeList = Object.values(jsonData.members);
+    var refinedList = [];
+    // Iterate through the members and refine the list to members whose names include the search term
+    var member;
+    for (var i = 0; i < activeList.length; i++) {
+      member = activeList[i];
+      if (member["FirstName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(member);
+      } else if (member["LastName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(member);
+      }
+    }
+    // Alphabetize the search results
+    refinedList.sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]) });
+    // populate member string with HTML to show list of members
+    var memberString = "";
+    var listOption;
+    for (var i = 0; i < refinedList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + refinedList[i].ID + ' style="text-align:left" onclick = "selectMatterAssignedMember(\'' + refinedList[i].ID + '\')">' + refinedList[i].FirstName + " " + refinedList[i].LastName + '</li>';
+      memberString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='matterMemberListDiv']").find('li').remove().end().append($(memberString));
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ------------------------------------------------------------------  CLOSE/REOPEN MATTER FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * update database to close the selected matter
+   */
+  function closeMatter() {
+    var selectedMatterID = document.getElementById("selectedMatterID").value;
+    var selectedMatter = jsonData.matters[selectedMatterID];
+    // start loading button
+    document.getElementById("closeMatterBtnID").style.display = "none";
+    document.getElementById("closeMatterBtnIDLoading").style.display = "inline-block";
+    // pass to gs to update sheet
+    google.script.run.withSuccessHandler(onSuccessCloseMatter).withFailureHandler(onFailCloseMatter).closeMatter(selectedMatter);
+  }
+
+  /**
+   * function called when the server updated the matter to be closed
+   * @param {object} closedMatter: the matter dictionary that has been updated to be closed
+   */
+  function onSuccessCloseMatter(closedMatter) {
+    // stop loading button
+    document.getElementById("closeMatterBtnIDLoading").style.display = "none";
+    document.getElementById("closeMatterBtnID").style.display = "inline-block";
+    // update Json data
+    jsonData.matters[closedMatter["ID"]] = closedMatter;
+    // close and deselect closed matter
+    var type = document.getElementById("selectedType").value;
+    toggleMatterTypeSelect(type)
+    hideMatterInfo();
+  }
+
+  /**
+   * alerts user that server function to close a matter failed to run
+   */
+  function onFailCloseMatter(err) {
+    // stop loading button
+    document.getElementById("closeMatterBtnIDLoading").style.display = "none";
+    document.getElementById("closeMatterBtnID").style.display = "inline-block";
+    alert("Close matter failed. Pleas reload page. " + err);
+  }
+
+  /**
+   * reopens a selected closed matter by updating the database
+   */
+  function reopenMatter() {
+    var selectedMatterID = document.getElementById("selectedMatterID").value;
+    var selectedMatter = jsonData.matters[selectedMatterID];
+    // start loading button
+    document.getElementById("reopenMatterBtnID").style.display = "none";
+    document.getElementById("reopenMatterBtnIDLoading").style.display = "inline-block";
+    // pass matter to server to update database
+    google.script.run.withSuccessHandler(onSuccessReopenMatter).withFailureHandler(onFailReopenMatter).reopenMatter(selectedMatter);
+  }
+
+  /**
+   * called when matter is succesfully updated in the database to be reopend
+   * @param {object} reopenedMatter: the dictionary of the matter that has been reopend
+   */
+  function onSuccessReopenMatter(reopenedMatter) {
+    // stop loading button
+    document.getElementById("reopenMatterBtnIDLoading").style.display = "none";
+    document.getElementById("reopenMatterBtnID").style.display = "inline-block";
+    // update Json data
+    jsonData.matters[reopenedMatter["ID"]] = reopenedMatter;
+    // show matters with the current Type
+    var typeTitle = document.getElementById("matterTypeButtonTitle").textContent;
+    if (typeTitle == "All") {
+      toggleMatterTypeSelect("All")
+    } else {
+      toggleMatterTypeSelect(reopenedMatter["TypeName"]);
+    }
+    // close and deselect closed matter card
+    hideMatterInfo();
+  }
+
+  /**
+   * alerts user that server function to reopen a matter failed to run
+   */
+  function onFailReopenMatter(err) {
+    // stop loading button
+    document.getElementById("reopenMatterBtnIDLoading").style.display = "none";
+    document.getElementById("reopenMatterBtnID").style.display = "inline-block";
+    alert("Reopen matter failed. Please reload page. " + err);
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------   ADD/EDIT MATTER FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -------------------------------  ADD MATTER  ---------------------------------------
+
+  /**
+   * pull info from sheet and add matter to sheet
+   */
+  function addMatter() {
+    // hide the add button and show the loading button
+    document.getElementById("addMatterBtnID").style.display = "none";
+    document.getElementById("addMatterBtnIDLoading").style.display = "block";
+    // Get the matter info from the html
+    var infoList = getMatterInformation();
+    // If the matter info is returned as a string, then the user data was not valid, and the string returned is the id of the error message
+    if (typeof (infoList) == "string") {
+      // hide the loading button and show the add person button
+      document.getElementById("addMatterBtnIDLoading").style.display = "none";
+      document.getElementById("addMatterBtnID").style.display = "block";
+      // hide all error messages, then show the correct error message
+      document.getElementById("addMatterNullFieldsMessage").style.display = "none";
+      document.getElementById("addMatterUniqueFieldsMessage").style.display = "none";
+      document.getElementById(infoList).style.display = "block";
+      // return so that nothing is done by the server
+      return;
+    }
+    // hide all error messages
+    document.getElementById("addMatterNullFieldsMessage").style.display = "none";
+    document.getElementById("addMatterUniqueFieldsMessage").style.display = "none";
+    // Call the server function that will add the matter (and its corresponding type information) to the database
+    var matter = infoList[0];
+    var matterTypeInfo = infoList[1];
+    // store this information in the database
+    google.script.run.withSuccessHandler(onSuccessAddMatter).withFailureHandler(onFailAddMatter).addMatter(matter, matterTypeInfo, jsonData.clients);
+  }
+
+  /**
+   * onSuccess Function to be called after a matter is edited
+   * 
+   * @param {object} infolist: information passed by on by the server
+   *                          [matter(dict), matterType(dict), client(dict)]
+   */
+  function onSuccessAddMatter(infoList) {
+    // Update jsonData and the info on the page
+    var matter = infoList[0];
+    var matterType = infoList[1];
+    var client = infoList[2];
+    jsonData.matters[matter["ID"]] = matter;
+    jsonData.matterTypeData[matterType["ID"]] = matterType;
+    jsonData.clients[client["ID"]] = client;
+    toggleMatterTypeSelect("All");
+    // Show the success message
+    toggleMatterTypeSelect("All");
+    // Reset the modal fields and show the add button and success message
+    resetAddEditMatterModal();
+    document.getElementById("addMatterBtnID").style.display = "block";
+    document.getElementById("addMatterSuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFail function to be called after a matter is not able to be edited
+   */
+  function onFailAddMatter(err) {
+    alert("There was an error while trying to add this matter to the database. Please refresh this page.\n" + err);
+    // hide the loading button and show the add matter button
+    document.getElementById("addMatterBtnIDLoading").style.display = "none";
+    document.getElementById("addMatterBtnID").style.display = "block";
+  }
+
+
+  // ------------------------------  EDIT MATTER  ---------------------------------------
+
+  /**
+   * Function to edit a matter.
+   */
+  function editMatter() {
+    // hide the add button and show the loading button
+    document.getElementById("editMatterBtnID").style.display = "none";
+    document.getElementById("editMatterBtnIDLoading").style.display = "block";
+    // Get the matter info from the html
+    var infoList = getMatterInformation();
+    // If the matter info is returned as a string, then the user data was not valid, and the string returned is the id of the error message
+    if (typeof (infoList) == "string") {
+      // hide the loading button and show the add person button
+      document.getElementById("editMatterBtnIDLoading").style.display = "none";
+      document.getElementById("editMatterBtnID").style.display = "block";
+      // hide all error messages, then show the correct error message
+      document.getElementById("addMatterNullFieldsMessage").style.display = "none";
+      document.getElementById("addMatterUniqueFieldsMessage").style.display = "none";
+      document.getElementById(infoList).style.display = "block";
+      // return so that nothing is done by the server
+      return;
+    }
+    // hide all error messages
+    document.getElementById("addMatterNullFieldsMessage").style.display = "none";
+    document.getElementById("addMatterUniqueFieldsMessage").style.display = "none";
+
+    // Call the server function that will add the matter (and its corresponding type information) to the database
+    var matter = infoList[0];
+    var matterTypeInfo = infoList[1];
+    // pass along values from edited matter and matter type
+    var editedMatterID = document.getElementById("selectedMatterID").value;
+    var editedMatter = jsonData.matters[editedMatterID];
+
+    matter["ID"] = editedMatterID;
+    matter["FolderID"] = editedMatter["FolderID"];
+    matter["TypeID"] = editedMatter["TypeID"];
+    matterTypeInfo["ID"] = editedMatter["TypeID"];
+    // Pass along the notes of the previous client
+    var noteID = editedMatter["NoteID"];
+    if (!noteID) { // without this gs call fails immediately if noteID is undefined
+      noteID = "";
+    }
+    matter["NoteID"] = noteID;
+    // Pass along the tasks of the previous client
+    var taskID = editedMatter["TaskID"];
+    if (!taskID) { // without this gs call fails immediately if noteID is undefined
+      taskID = "";
+    }
+    matter["TaskID"] = taskID;
+    // Pass along the datecClosed of the previous client
+    var dateClosed = editedMatter["DateClosed"];
+    if (!dateClosed) { // without this gs call fails immediately if noteID is undefined
+      dateClosed = "";
+    }
+    matter["DateClosed"] = dateClosed;
+
+    // store this information in the database
+    google.script.run.withSuccessHandler(onSuccessEditMatter).withFailureHandler(onFailEditMatter).editMatter(matter, matterTypeInfo, editedMatter["ClientID"], jsonData.clients);
+  }
+
+  /**
+   * onSuccess Function to be called after a matter is edited successfully
+   *
+   * @param {object} infoList: list containing the following data: [{matter},{matterType},{oldClient},{newClient}]
+   */
+  function onSuccessEditMatter(infoList) {
+    // update the json data
+    var matter = infoList[0];
+    var matterType = infoList[1];
+    var oldClient = infoList[2];
+    var newClient = infoList[3];
+    jsonData.matters[matter["ID"]] = matter;
+    jsonData.matterTypeData[matterType["ID"]] = matterType;
+    jsonData.clients[oldClient["ID"]] = oldClient;
+    jsonData.clients[newClient["ID"]] = newClient;
+    // hide the add button loading and show the add button
+    document.getElementById("editMatterBtnIDLoading").style.display = "none";
+    document.getElementById("editMatterBtnID").style.display = "block";
+    // Show the success message
+    document.getElementById("editMatterSuccessMessage").style.display = "block";
+    toggleMatterTypeSelect("All");
+  }
+
+  /**
+   * onFail function to be called when a matter is not edited successfully
+   */
+  function onFailEditMatter(err) {
+    alert("An error occured while attempting to edit a matter. Please refresh the page. " + err);
+    // hide the add button loading and show the add button
+    document.getElementById("editMatterBtnIDLoading").style.display = "none";
+    document.getElementById("editMatterBtnID").style.display = "block";
+  }
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -------------------------------------------------------   ADD/EDIT MATTER HELPER FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Function that gets the matter information from the html in order to create a new dictionary
+   *
+   * @return {object} returns a list of dictionaries [matter, matterType] 
+   */
+  function getMatterInformation() {
+    // Instantiate the dictionary that will be used to create the client (pull this info right away to avoid user's changing it)
+    var matter = {};
+    // check to ensure that the client is valid (has non-null and unique docket code)
+    var errorMsg = checkInvalidMatter();
+    if (errorMsg) { // if check returns error message ID end and return error message ID
+      // if person is not valid, return null
+      return errorMsg;
+    }
+    // fill in the matter information
+    matter["Description"] = document.getElementById("matterDescription").value;
+    matter["TypeName"] = document.getElementById("newMatterType").value;
+    matter["ResponsibleMember"] = document.getElementById("selectedAssignedMemberID").value;
+    matter["ClientID"] = document.getElementById("selectedMatterClientID").value;
+    // docketNo = inputted number + "-client dockect Code"
+    // find index of dash to pull out prefix
+    var dashIndex = getDashInType(matter["TypeName"]);
+    var prefix = matter["TypeName"].slice(dashIndex + 1);
+    // add leading 0's to the docket number
+    var docketNoLength = 2;
+    if (matter["TypeName"] == "Patent-") {
+      docketNoLength = 3;
+    }
+    var docketNo = document.getElementById("matterDocketNumber").value;
+    // Set the docket no to an int briefly to eliminate leading zeros
+    docketNo = parseInt(docketNo) + "";
+    while (docketNo.length < docketNoLength) {
+      docketNo = "0" + docketNo;
+    }
+    // create full docketNo
+    matter["DocketNo"] = jsonData.clients[matter["ClientID"]].DocketCode + "-" + prefix + docketNo;
+
+    // pull type fields
+    var fieldNames = jsonData.matterTypes[matter["TypeName"]];
+    var fieldName;
+    var matterType = {}; // dictionary to hold the unique fields for this type of matter
+    for (var i = 0; i < fieldNames.length; i++) {
+      fieldName = fieldNames[i];
+      matterType[fieldName] = document.getElementById(fieldName).value;
+    }
+    // return dictionaries as a list (currently just one)
+    return [matter, matterType];
+  }
+
+  /**
+   * Function that checks whether the inputted matter information is valid or not
+   *
+   * @return {string} returns a string representing which error message to throw (returns false if input is valid)
+   */
+  function checkInvalidMatter() {
+    document.getElementById("newMatterType").className = "custom-select";
+    document.getElementById("matterDocketNumber").className = "form-control";
+    document.getElementById("selectedMatterClientName").className = "";
+    document.getElementById("selectedAssignedMemberName").className = "";
+    // Get the necessary fields
+    var type = document.getElementById("newMatterType").value;
+    var docketNo = document.getElementById("matterDocketNumber").value;
+    var clientID = document.getElementById("selectedMatterClientID").value;
+    var memberID = document.getElementById("selectedAssignedMemberID").value;
+    // Check the required fields for any null values (mark these fields as invalid if null)
+    var nulls = false;
+    if (type == "Not Specified") {
+      nulls = true;
+      document.getElementById("newMatterType").className = "custom-select is-invalid";
+    }
+    if (!docketNo) {
+      nulls = true;
+      document.getElementById("matterDocketNumber").className = "form-control is-invalid";
+    }
+    if (!clientID) {
+      nulls = true;
+      document.getElementById("selectedMatterClientName").className = "text-danger";
+    }
+    if (!memberID) {
+      nulls = true;
+      document.getElementById("selectedAssignedMemberName").className = "text-danger";
+    }
+    // If any of the above fields were null, return the ID of the appropriate error message
+    if (nulls) {
+      return "addMatterNullFieldsMessage";
+    }
+
+    // Check that the inputted docket no is a valid, positive int
+    if (docketNo != parseInt(docketNo) || parseInt(docketNo) < 0) {
+      document.getElementById("matterDocketNumber").className = "form-control is-invalid";
+      return "addMatterValidDocketNoMessage";
+    }
+
+    // Append zeros to the docket number if necessary
+    var docketNoLen = 2;
+    if (type == "Patent-") {
+      docketNoLen = 3
+    }
+    docketNo = parseInt(docketNo) + "";
+    while (docketNo.length < docketNoLen) {
+      docketNo = "0" + docketNo;
+    }
+    // Check that the docket number is unique
+    //get docket number of matter being edited if editing
+    var selectedMatterID = document.getElementById("selectedMatterID").value;
+    var prevDocketNo = "";
+    if (selectedMatterID) {
+      prevDocketNo = jsonData.matters[selectedMatterID]["DocketNo"];
+    }
+    // get matter prefix
+    var dashIndex = getDashInType(type);
+    var fullDocketNo = jsonData.clients[clientID].DocketCode + "-" + type.slice(dashIndex + 1) + docketNo;
+
+    var matterIDs = Object.keys(jsonData.matters);
+    for (var i = 0; i < matterIDs.length; i++) {
+      // if any matter has the same docket no.. set to invalid and return error msg
+      if (jsonData.matters[matterIDs[i]]["DocketNo"] == fullDocketNo && prevDocketNo != fullDocketNo) {
+        document.getElementById("matterDocketNumber").className = "form-control is-invalid";
+        return "addMatterUniqueFieldsMessage";
+      }
+    }
+    // return false since all of the inputs are valid
+    return false;
+  }
+
+
+  /**
+   * Function that hides the success message(s) for when a new matter is created
+   */
+  function hideMatterSuccessMessages() {
+    document.getElementById("addMatterSuccessMessage").style.display = "none";
+    document.getElementById("editMatterSuccessMessage").style.display = "none";
+  }
+
+  /**
+   * Function to hide the error messages for the matter
+   */
+  function hideMatterErrorMessages() {
+    // hide the error messages
+    document.getElementById("addMatterNullFieldsMessage").style.display = "none";
+    document.getElementById("addMatterUniqueFieldsMessage").style.display = "none";
+    document.getElementById("addMatterValidDocketNoMessage").style.display = "none";
+  }
+
+  /**
+   * Function that resets the add/edit matter modal, hiding all messages+buttons and emptying fields
+   */
+  function resetAddEditMatterModal() {
+    // hide any messages
+    hideMatterSuccessMessages();
+    hideMatterErrorMessages();
+    // hide all of the buttons
+    document.getElementById("addMatterBtnID").style.display = "none";
+    document.getElementById("editMatterBtnID").style.display = "none";
+    document.getElementById("addMatterBtnIDLoading").style.display = "none";
+    document.getElementById("editMatterBtnIDLoading").style.display = "none";
+    // clear the fields
+    document.getElementById("newMatterType").value = "Not Specified";
+    document.getElementById("newMatterType").className = "custom-select";
+    document.getElementById("newMatterType").disabled = false;
+    document.getElementById("matterDescription").value = null;
+    document.getElementById("matterDocketNumber").value = null;
+    document.getElementById("matterDocketNumber").className = "form-control";
+    document.getElementById("docketCodePrepend").innerHTML = "";
+    document.getElementById("selectedMatterClientID").value = null;
+    document.getElementById("selectedMatterClientName").className = "";
+    document.getElementById("selectedMatterClientName").textContent = "Selected Client: ";
+    document.getElementById("selectedAssignedMemberID").value = null;
+    document.getElementById("selectedAssignedMemberName").className = "";
+    document.getElementById("selectedAssignedMemberName").textContent = "Selected Member: ";
+    // hide type specific fields
+    document.getElementById("matterTypeFields").style.display = "none";
+  }
+
+  /**
+   * Function that suggests the next avaliable docket number (or current docket number if editing) for the given client and matter type and places it in HTML
+   *
+   * @param {string} clientID: the current client selected to be associated with the matter
+   * @param {string} typeName: the type of matter 
+   */
+  function suggestDocketNo(clientID, typeName) {
+    // Get the ID of the selected matter to compare (determines whether or not to suggest an existing docket no or a new one)
+    var selectedMatterID = document.getElementById("selectedMatterID").value;
+    // If a matter is selected, check to see if its the same client - type pair that was passed in (if so, use the same docket number)
+    if (selectedMatterID) {
+      var selectedMatter = jsonData.matters[selectedMatterID];
+      if (clientID == selectedMatter["ClientID"] && typeName == selectedMatter["TypeName"]) { // overwrite using the same docket number
+        var docketNoDashIndex = getDashInType(selectedMatter["DocketNo"]);
+        var prefixDashIndex = getDashInType(typeName);
+        var prefixLen = typeName.slice(prefixDashIndex + 1).length;
+        var docketNo = selectedMatter["DocketNo"].slice(docketNoDashIndex + prefixLen + 1);
+        document.getElementById("matterDocketNumber").value = docketNo;
+        return;
+      }
+    }
+    var client = jsonData.clients[clientID];
+    var matterIDs = client["MatterID"];
+    // filter matters to get only those of the same type
+    // set the length of the docket no (all should be 2, except patents which is 3)
+    var docketLength = 2;
+    if (typeName == "Patent-") {
+      docketLength = 3;
+    }
+    var matter, docketNo, docketInt;
+    var highestDocketNo = 0;
+    if (matterIDs) { // if the client has matters...
+      matterIDs = matterIDs.split(',');
+    } else { // if the client does not have matters, suggest a docket no of 1 (with 0s appended)
+      if (docketLength == 2) {
+        document.getElementById("matterDocketNumber").value = "01";
+      } else {
+        document.getElementById("matterDocketNumber").value = "001";
+      }
+      return;
+    }
+    // Iterate through each of the clients matters, finding the highest docket number of the same type as this matter
+    for (var i = 0; i < matterIDs.length; i++) {
+      matter = jsonData.matters[matterIDs[i]];
+      if (matter["TypeName"] == typeName) {
+        var docketNoDashIndex = getDashInType(matter["DocketNo"]);
+        var prefixDashIndex = getDashInType(typeName);
+        var prefixLen = typeName.slice(prefixDashIndex + 1).length;
+        // get teh docket no
+        docketNo = matter["DocketNo"].slice(docketNoDashIndex + prefixLen + 1);
+        docketInt = parseInt(docketNo, 10);
+        // if the docket no is higher than the current max, update the max
+        if (docketInt > highestDocketNo) {
+          highestDocketNo = docketInt;
+        }
+      }
+    }
+    // Suggest the 1 greater than the highest docket number to be the docket number (suggest 1 if there were no matters of the same type for this client)
+    var suggestedDocketNo = highestDocketNo + 1;
+    // convert this suggestion to a string, appending 0s in front if necessary
+    suggestedDocketNo += "";
+    var numZeros = docketLength - suggestedDocketNo.length;
+    for (var i = 0; i < numZeros; i++) {
+      suggestedDocketNo = "0" + suggestedDocketNo;
+    }
+    document.getElementById("matterDocketNumber").value = suggestedDocketNo;
+  }
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------   (UNDO) DELETE MATTER FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Function to delete a matter.
+   */
+  function deleteMatter() {
+    // hide the delete button and replace with loading button
+    document.getElementById("deleteMatterButton").style.display = "none";
+    document.getElementById("deleteMatterButtonLoading").style.display = "block";
+    // get the matter to be deleted
+    var matterID = document.getElementById("selectedMatterID").value;
+    var matter = jsonData.matters[matterID];
+    //get the client who owns the matter
+    var client = jsonData.clients[matter["ClientID"]]
+    // reset the selected Matter id
+    document.getElementById("selectedMatterID").value = null;
+    // delete the Client from the server
+    google.script.run.withSuccessHandler(onSuccessDeleteMatter).withFailureHandler(onFailureDeleteMatter).deleteMatter(matter, client);
+  }
+
+  /**
+   * onSuccessFunction to be called after a matter is deleted
+   *
+   * @param {object} infoList: list of values returned by deleteMatter (GS) function [deletedMatter, deletedMatterType, updatedClient, parentFolderIDs]
+   */
+  function onSuccessDeleteMatter(infoList) {
+    // Unpack the input
+    var deletedMatter = infoList[0];
+    var deletedMatterID = deletedMatter["ID"];
+    var deletedMatterType = infoList[1];
+    var updatedClient = infoList[2];
+    var parentFolderIDs = infoList[3].join(',');
+    // Set the hidden tags
+    document.getElementById("deletedMatterID").value = deletedMatterID;
+    document.getElementById("deletedMatterClientID").value = updatedClient["ID"];
+    document.getElementById("parentFolderIDs").value = parentFolderIDs;
+    // Update the jsonData
+    delete jsonData.matters[deletedMatterID];
+    delete jsonData.matterTypeData[deletedMatterType["ID"]];
+    jsonData.clients[updatedClient["ID"]] = updatedClient;
+    // Update the delete alert
+    document.getElementById("deletedMatterName").innerHTML = deletedMatter["DocketNo"] + " has been deleted.";
+    // Show the delete alert
+    document.getElementById("deletedMatterAlert").style.display = "flex";
+    // Update the matter list to reflect this deletion and hide the deleted matter card
+    toggleMatterTypeSelect("All");
+    // hide loading button and show delete button
+    document.getElementById("deleteMatterButtonLoading").style.display = "none";
+    document.getElementById("deleteMatterButton").style.display = "block";
+
+  }
+
+  /**
+   * onFail function to be called when a matter cannot be deleted
+   */
+  function onFailureDeleteMatter(err) {
+    alert("delete Matter failed: " + err);
+    // hide loading button and show delete button
+    document.getElementById("deleteMatterButtonLoading").style.display = "none";
+    document.getElementById("deleteMatterButton").style.display = "block";
+  }
+
+  /**
+   * Function that undoes the delete operation for the most recently deleted Client
+   */
+  function undoDeleteMatter() {
+    // get the id of the matter being undeleted
+    var matterID = document.getElementById("deletedMatterID").value;
+    var parentFolderIDs = document.getElementById("parentFolderIDs").value.split(',');
+    // hide the undo button and show the loading button
+    document.getElementById("undoDeleteMatterButton").style.display = "none";
+    document.getElementById("undoDeleteMatterButtonLoading").style.display = "block";
+    // get the client of the matter that is being recovered
+    var clientID = document.getElementById("deletedMatterClientID").value;
+    var client = jsonData.clients[clientID];
+    // have the server actually undo the deletion
+    google.script.run.withSuccessHandler(onSuccessUndoDeleteMatter).withFailureHandler(onFailUndoDeleteMatter).undoDeleteMatter(matterID, parentFolderIDs, client);
+  }
+
+  /**
+   * onSuccessFunction that reloads the json data and updates style on the page (to be called when data is properly updated by the server)
+   *
+   * @param {object} infoList: list of the following structure: [matter, matterType, client]
+   */
+  function onSuccessUndoDeleteMatter(infoList) {
+    // Unpack the infoList
+    var matter = infoList[0];
+    var matterType = infoList[1];
+    var client = infoList[2];
+    var matterID = document.getElementById("deletedMatterID").value;
+    // update the json to reflect the information recovered
+    jsonData.matters[matterID] = matter;
+    jsonData.matterTypeData[matterType["ID"]] = matterType;
+    // Update the ui to reflect the updated json
+    toggleMatterTypeSelect("All");
+    // hide deleted Client alert
+    hideAlert("deletedMatterAlert");
+    // update the success undo alert to have the matter's name
+    document.getElementById("undoDeletedMatterName").innerHTML = matter["DocketNo"] + " has been recovered.";
+    // show success undo alert
+    document.getElementById("undoDeletedMatterAlert").style.display = "flex";
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeleteMatterButtonLoading").style.display = "none";
+    document.getElementById("undoDeleteMatterButton").style.display = "block";
+  }
+
+  /**
+   * onFailure function to be called when the json data is not properly updated by the server
+   */
+  function onFailUndoDeleteMatter(err) {
+    alert("Unable to recover this matter. The following error occurred: " + err);
+    // hide deleted matter alert
+    hideAlert("deletedMatterAlert");
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeleteMatterButtonLoading").style.display = "none";
+    document.getElementById("undoDeleteMatterButton").style.display = "block";
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------   ADD/EDIT NOTES HELPER FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  /**
+   * Function that sets the associated note type.
+   * To be called whenever the client notes or matter notes cards are clicked. (Ensures notes are added/edited properly)
+   */
+  function setAssociatedNoteType(type) {
+    // Set the note association type
+    document.getElementById("associatedNoteType").value = type;
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------  GENERAL MATTERS HELPER FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Update the matter card for the users privileges
+   * 
+   * @paraam {string} createdBy: string representing the user that created the matter
+   */
+  function updateMatterCardPrivileges(createdBy) {
+    // Hide all privilege based buttons
+    document.getElementById("reopenMatterBtnID").style.display = "none";
+    document.getElementById("closeMatterBtnID").style.display = "none";
+    document.getElementById("openEditMatterModal").style.display = "none";
+    document.getElementById("deleteMatterButton").style.display = "none";
+    // Go through and show privilege-based buttons according to the user's privilege level
+    var userPriv = jsonData.user["Privileges"];
+    if (userPriv > 0) {
+      // Show level 1 privileges (edit/delete/close/reopen matter if the user created them)
+      // check to see if this matter was created by the current user
+      if (createdBy == jsonData.user["Email"]) {
+        document.getElementById("reopenMatterBtnID").style.display = "inline-block";
+        document.getElementById("closeMatterBtnID").style.display = "inline-block";
+        document.getElementById("openEditMatterModal").style.display = "inline-block";
+        document.getElementById("deleteMatterButton").style.display = "block";
+      }
+      if (userPriv > 1) {
+        // Show level 2 privileges (edit/delete/close/reopen any matter)
+        document.getElementById("reopenMatterBtnID").style.display = "inline-block";
+        document.getElementById("closeMatterBtnID").style.display = "inline-block";
+        document.getElementById("openEditMatterModal").style.display = "inline-block";
+        document.getElementById("deleteMatterButton").style.display = "block";
+        // Level 3 privileges for matters are covered by levels 1 and 2
+      }
+    }
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------  GENERAL MATTERS HELPER FUNCTIONS   ------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+  /**
+   * Creates the HTML for displaying a list of matters in the client card 
+   *
+   * @param {string} matterIDs: string list of matterIDs to be displayed
+   * @return {string} returns html of each matter as a list item that links to the matter page
+   */
+  function getMatterStr(matterIDs) {
+    var matterStr = '<li class="list-group-item  ">NO MATTERS</li>';
+    if (matterIDs) {
+      matterIDs = matterIDs.split(',');
+      //remove null matters from list
+      var existingMatters = [];
+      for (var i = 0; i < matterIDs.length; i++) {
+        var matter = jsonData.matters[matterIDs[i]];
+        if (matter) {
+          existingMatters.push(matter);
+        }
+      }
+      // sort the existingMatterIDs list
+      existingMatters = existingMatters.sort(compareMattersByDate);
+      matterStr = "";
+      var matter;
+      var url = jsonData.initParams["url"] + "?page=Matters";
+      for (var i = 0; i < existingMatters.length; i++) {
+        matter = existingMatters[i];
+        matterStr += '<li class="list-group-item hoverable " id ="';
+        matterStr += matter.ID;
+        matterStr += '" style="text-align:left"><a href="';
+        matterStr += url;
+        matterStr += '&initialMatterID=';
+        matterStr += matter.ID;
+        matterStr += '">';
+        matterStr += matter.DocketNo;
+        matterStr += '</a></li>';
+      }
+    }
+    // if all notes are no longer valid...
+    if (matterStr == "") {
+      matterStr = '<li class="list-group-item hoverable ">NO MATTERS</li>';
+    }
+    return matterStr;
+  }
+
+  /**
+   * Function that returns the index of the last dash in a type name
+   * 
+   * @param {string} typeName: the name of the type (also the string we are searching in)
+   * @return {int} the index of the last dash in typeName, or -1 if there is none
+   */
+  function getDashInType(typeName) {
+    var dashIndex;
+    for (var i = typeName.length; i > -1; i--) {
+      if (typeName.charAt(i) == '-') {
+        dashIndex = i;
+        return dashIndex;
+      }
+    }
+    return -1
+  }
+
+  /**
+   * Function to hide alert given element id
+   *
+   * @param {string} alertID: the HTML ID of the alert to be hidden
+   */
+  function hideAlert(alertID) {
+    document.getElementById(alertID).style.display = "none"
+  }
+
+</script>

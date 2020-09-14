@@ -1,0 +1,304 @@
+<!----------------------------------------- Add/Edit Client Modal ---------------------------------------------->
+<div class="modal fade" id="modal-propose-client" tabindex="-1" role="dialog" aria-labelledby="modal-propose-client"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content  " onclick="hideClientSuccessMessages()">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-3">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-id-card" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="clientModalTitle"></div>
+              </div>
+            </div>
+
+            <div class="col-6">
+            </div>
+
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <!----------------------- Add/Edit Client Div ---------------------->
+        <div id="addEditClientDiv">
+          <!-- entity form -->
+          <form>
+            <h5 class=" mt-3" style="text-align:left">Client Information</h5>
+            <div class="form-row">
+              <div class="col-md-4 mb-3">
+                <label for="clientDocketCode">Docket Code</label>
+                <input type="text" class="form-control" id="clientDocketCode" placeholder="Docket Code">
+              </div>
+              <div class="col mb-3">
+                <label for="clientName">Client Name</label>
+                <input type="text" class="form-control" id="clientName" placeholder="Client Name">
+              </div>
+            </div>
+            <div class="form-row">
+              <!--Only have the option to change status if -->
+              <div class="col-md-4 mb-3">
+                <label for="clientStatus">Status</label>
+                <select class="custom-select" id="clientStatus">
+                  <option value="In Review">In Review</option>
+                  <option value="Active">Active</option>
+                  <option value="Removed">Removed</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="custom-control custom-checkbox" style="margin-top:15%">
+                  <input type="checkbox" class="custom-control-input" id="clientLSASigned">
+                  <label class="custom-control-label" for="clientLSASigned">LSA Signed</label>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="custom-control custom-checkbox" style="margin-top:15%">
+                  <input type="checkbox" class="custom-control-input" id="clientRetainerPaid">
+                  <label class="custom-control-label" for="clientRetainerPaid">Paid Retainer</label>
+                </div>
+              </div>
+            </div>
+            <h5 class=" mt-3" style="text-align:left">People</h5>
+            <div class="form-row">
+              <div class="col-md-6 mb-3">
+                <div id="associatedClientPeopleListID">
+                  <label for="entityType">Associated People</label>
+                  <p id="associatedClientPeopleID">No Associated People</p>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3" id="associatedClientPeopleBtnID">
+                <button type="button" id="manageAssociatedClientPeopleBtnID" class="btn btn-primary"
+                  onclick="toggleClientPeopleKanban()">
+                  Manage Associated People
+                </button>
+              </div>
+              <div class="col mb-3">
+                <div class="row justify-content-md-center" id="clientManagePeopleKanbanOuterDiv" style="display:none">
+                  <div class="card overflow-hidden ">
+                    <div class="container-kanban " style="align-content:center">
+                      <div class="kanban-board" data-toggle="dragula"
+                        data-containers="[&quot;kanbanAssignedClientPeople&quot;, &quot;kanbanUnassignedClientPeople&quot;]">
+                        <div class="kanban-col px-0 bg-light">
+                          <div class="card-list card-list-flush bg-light">
+                            <div class="card-list-title row align-items-center mb-3">
+                              <div class="row align-items-center" style="margin:0.5rem">
+                                <div class="col-1"></div>
+                                <div class="col">
+                                  <h6 class="mb-0 ">Associated with Client</h6>
+                                </div>
+                                <div class="col-1">
+                                  <div class="btn-xs btn-icon-only"></div>
+                                  <!--This btn ensures that the two columns are vertically aligned with one another, no other purpose-->
+                                </div>
+                              </div>
+                            </div>
+                            <div class="card-list-body" id="kanbanAssignedClientPeople"
+                              style="padding:0; height: 15rem; overflow: auto">
+                              <span class="empty-container" data-placeholder="Empty"></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="kanban-col px-0 bg-light">
+                          <div class="card-list card-list-flush bg-light">
+                            <div class="card-list-title align-items-center mb-3">
+
+                              <div class="row align-items-center" style="margin:0.5rem">
+                                <div class="col1"></div>
+                                <div class="col">
+                                  <h6 class="mb-0 ">Not Associated with Client</h6>
+                                </div>
+                                <div class="col1">
+                                  <button type="button" class="btn btn-xs bg-light  rounded-circle btn-icon-only"
+                                    onclick="toggleSearchClientPeopleKanban()">
+                                    <span class="btn-inner--icon">
+                                      <i class="fas fa-search"></i>
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div class="row align-items-center" id="clientAssociatedPeopleSearchBar"
+                                style="display:none; margin:auto">
+                                <div class="form-group">
+                                  <div class="input-group input-group-merge input-group-sm">
+                                    <input type="text" class="form-control" id="clientAssociatedPeopleSearchValue"
+                                      placeholder="Search">
+                                    <div class="input-group-append">
+                                      <span class="input-group-btn">
+                                        <button type="button" class="btn btn-sm bg-white"
+                                          onclick="searchClientPeopleKanban()"><i class="fas fa-search"></i></button>
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                            </div>
+                            <div class="card-list-body" id="kanbanUnassignedClientPeople"
+                              style="padding:0; height: 15rem; overflow: auto">
+                              <span class="empty-container" data-placeholder="Empty"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h5 class=" mt-3" style="text-align:left">Entities</h5>
+            <div class="form-row">
+              <div class="col-md-6 mb-3">
+                <div id="associatedClientEntitiesListID">
+                  <label for="entityType">Associated Entities</label>
+                  <p id="associatedClientEntitiesID">No Associated Entities</p>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3" id="associatedClientEntitiesBtnID">
+                <button type="button" id="manageAssociatedClientEntitiesBtnID" class="btn btn-primary"
+                  onclick="toggleClientEntitiesKanban()">
+                  Manage Associated Entities
+                </button>
+              </div>
+              <div class="col mb-3">
+                <div class="row justify-content-md-center" id="clientManageEntitiesKanbanOuterDiv" style="display:none">
+                  <div class="card overflow-hidden ">
+                    <div class="container-kanban " style="align-content:center">
+                      <div class="kanban-board" data-toggle="dragula"
+                        data-containers="[&quot;kanbanAssignedClientEntities&quot;, &quot;kanbanUnassignedClientEntities&quot;]">
+                        <div class="kanban-col px-0 bg-light">
+                          <div class="card-list card-list-flush bg-light">
+                            <div class="card-list-title row align-items-center mb-3">
+                              <div class="row align-items-center" style="margin:0.5rem">
+                                <div class="col-1"></div>
+                                <div class="col">
+                                  <h6 class="mb-0 ">Associated with Client</h6>
+                                </div>
+                                <div class="col-1">
+                                  <div class="btn-xs btn-icon-only"></div>
+                                  <!--This btn ensures that the two columns are vertically aligned with one another, no other purpose-->
+                                </div>
+                              </div>
+                            </div>
+                            <div class="card-list-body" id="kanbanAssignedClientEntities"
+                              style="padding:0; height: 15rem; overflow: auto">
+                              <span class="empty-container" data-placeholder="Empty"></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="kanban-col px-0 bg-light">
+                          <div class="card-list card-list-flush bg-light">
+                            <div class="card-list-title align-items-center mb-3">
+                              <div class="row align-items-center" style="margin:0.5rem">
+                                <div class="col1"></div>
+                                <div class="col">
+                                  <h6 class="mb-0 ">Not Associated with Client</h6>
+                                </div>
+                                <div class="col1">
+                                  <button type="button" class="btn btn-xs bg-light  rounded-circle btn-icon-only"
+                                    onclick="toggleSearchClientEntitiesKanban()">
+                                    <span class="btn-inner--icon">
+                                      <i class="fas fa-search"></i>
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div class="row align-items-center" id="clientAssociatedEntitiesSearchBar"
+                                style="display:none; margin:auto">
+                                <div class="form-group">
+                                  <div class="input-group input-group-merge input-group-sm">
+                                    <input type="text" class="form-control" id="clientAssociatedEntitiesSearchValue"
+                                      placeholder="Search">
+                                    <div class="input-group-append">
+                                      <span class="input-group-btn">
+                                        <button type="button" class="btn btn-sm bg-white"
+                                          onclick="searchClientEntitiesKanban()"><i class="fas fa-search"></i></button>
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                            </div>
+                            <div class="card-list-body" id="kanbanUnassignedClientEntities"
+                              style="padding:0; height: 15rem; overflow: auto">
+                              <span class="empty-container" data-placeholder="Empty"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+
+        </div>
+      </div>
+      <!-- Footer -->
+      <div class="modal-footer" style="margin:0">
+        <div class="container">
+          <div class="row">
+            <div class="col"></div>
+            <div class="col" style="text-align:center">
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="proposeClientBtnID"
+                style="display:none; margin:auto" onclick="proposeClient()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </span>
+                <span class="btn-inner--text">Propose Client</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="proposeClientBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Proposing Client</span>
+              </button>
+
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editClientBtnID"
+                style="display:none; margin:auto" onclick="editClient()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </span>
+                <span class="btn-inner--text">Edit Client</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editClientBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Editing Client</span>
+              </button>
+            </div>
+            <div class="col">
+              <p id="proposeClientSuccessMessage" style="display:none" class="text-success">Client Proposed
+                Successfully.</p>
+              <p id="editedClientSuccessMessage" style="display:none" class="text-success">Client Edited Successfully.
+              </p>
+              <p id="proposeClientNullFieldsMessage" style="display:none" class="text-danger">Please Fill Out All
+                Required Fields.</p>
+              <p id="proposeClientUniqueFieldsMessage" style="display:none" class="text-danger">Please Ensure the
+                Docket Code is Unique.</p>
+              <p id="proposeClientInvalidLengthFieldsMessage" style="display:none" class="text-danger">Please Ensure
+                the Docket Code Consists of 3 Characters.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

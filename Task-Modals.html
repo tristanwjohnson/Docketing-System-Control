@@ -1,0 +1,692 @@
+<!------------------------------------------------------ Task Option Modal ------------------------------------------------------->
+
+<div class="modal fade" id="taskOptionModal" tabindex="-1" role="dialog" aria-labelledby="taskOptionModal"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-3">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-list" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="TaskOptionModalTitle">Tasks</div>
+              </div>
+            </div>
+            <div class="col-6">
+            </div>
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="row">
+          <div class="col">
+            <button type="button" class="btn btn-outline-primary btn-icon" data-dismiss="modal" data-toggle="modal"
+              data-target="#modal-add-edit-task" onclick="onOpenAddEditTaskModal('add')">
+              <span class="btn-inner--icon"><i class="far fa-calendar-plus"></i></span>
+              <span class="btn-inner--text">Add New Task</span>
+            </button>
+          </div>
+          <div class="col">
+            <button type="button" class="btn btn-outline-primary btn-icon" style="padding: 0.75rem;"
+              data-dismiss="modal" data-toggle="modal" data-target="#addNewTaskTypeModal">
+              <span class="btn-inner--icon"><i class="fas fa-plus"></i></span>
+              <span class="btn-inner--text">Add New Task Type</span>
+            </button>
+          </div>
+        </div>
+        <!-- Footer -->
+        <!--div class="modal-footer" style="margin:0">
+      </div-->
+      </div>
+    </div>
+  </div>
+</div>
+<!----------------------------------------------------- Add/Edit Task Modal ------------------------------------------------------>
+<input id="selectedTaskID" type="hidden">
+<div class="modal fade" id="modal-add-edit-task" data-backdrop="static" tabindex="-1" role="dialog"
+  aria-labelledby="modal-add-edit-task" aria-hidden="true" style="overflow-y:auto">
+  <div id="modal-add-edit-task-size" class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content" onclick="hideAddEditTaskSuccessMessages()">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-5">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-gavel" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="taskModalTitle">Add Task</div>
+              </div>
+            </div>
+            <div class="col-7 my-auto">
+              <button id="acknowledgeTaskBtn" type="button" class="btn btn-xs btn-outline-primary" style="display:none"
+                onclick="acknowledgeOrCloseTask('acknowledge')">
+                <span class="btn-inner--text">Acknowledge Task</span>
+              </button>
+              <button id="acknowledgeTaskBtnLoading" type="button" class="btn btn-xs btn-icon btn-outline-primary"
+                style="display:none">
+                <span class="btn-inner--icon"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="btn-inner--text">Acknowledging Task</span>
+              </button>
+              <button id="closeTaskBtn" type="button" class="btn btn-xs btn-outline-primary" style="display:none"
+                onclick="acknowledgeOrCloseTask('close')">
+                <span class="btn-inner--text">Complete Task</span>
+              </button>
+              <button id="closeTaskBtnLoading" type="button" class="btn btn-xs btn-icon btn-outline-primary"
+                style="display:none">
+                <span class="btn-inner--icon"><i class="fas fa-spinner fa-spin"></i></span>
+                <span class="btn-inner--text">Completing Task</span>
+              </button>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body pb-0">
+        <div id="addEditTaskDiv" style="display:none">
+          <form>
+            <h5 class=" mt-3" style="text-align:left">Task Type</h5>
+            <div class="form-row">
+              <div class="col">
+                <select id="taskTypeSelect" class="custom-select" onchange="updateTaskTypeSelection()">
+
+                </select>
+              </div>
+            </div>
+            <h5 class=" mt-3" style="text-align:left">Task Info</h5>
+            <div class="form-row">
+              <div class="col">
+                <label class="form-control-label">Title</label>
+                <input type="text" class="form-control" placeholder="Task Title" id="taskTitle">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col">
+                <label class="form-control-label">Description</label>
+                <textarea class="form-control" placeholder="Task Description" id="taskDescription" rows="2"></textarea>
+              </div>
+            </div>
+            <h5 class=" mt-3" style="text-align:left">Task Actions</h5>
+            <div class="form-row">
+              <div class="col">
+                <div class="custom-control custom-checkbox">
+                  <input type="checkbox" class="custom-control-input" id="associateMatterCheckbox"
+                    onclick="toggleAssociateMatterCheckbox()">
+                  <label class="custom-control-label" for="associateMatterCheckbox">Associate Matter</label>
+                </div>
+              </div>
+              <div class="col">
+                <input id="taskFolderID" type="hidden">
+                <div class="custom-control custom-checkbox" style="display:inline-flex">
+                  <button id="taskFolderLoading" type="button" class="btn btn-xs mr-4" style="display:none">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </button>
+                  <input type="checkbox" class="custom-control-input" id="createDirectoryCheckbox"
+                    onclick="toggleCreateDirectoryCheckbox()">
+                  <label class="custom-control-label" for="createDirectoryCheckbox">Create Directory</label>
+                </div>
+              </div>
+              <div class="col">
+                <div class="custom-control custom-checkbox">
+                  <input type="checkbox" class="custom-control-input" id="sendEmailCheckbox"
+                    onclick="toggleSendEmailCheckbox()">
+                  <label class="custom-control-label" for="sendEmailCheckbox">Send Email</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-6" id="associatedMatterColumn" style="display:none">
+                <h5 class=" mt-3" style="text-align:left">Associated Matter</h5>
+                <p id="selectedTaskMatterDocketNo" style="text-align:left">Selected Matter:</p>
+                <input type="hidden" id="selectedTaskMatterID">
+                <div class="card" id="associatedMatterCard">
+                  <div class="row align-items-center" id="taskMatterListSearchBar" style="margin:0; display:inline">
+                    <div class="form-group mb-0">
+                      <div class="input-group input-group-merge input-group-sm">
+                        <input type="text" class="form-control   " style="border:0.5" id="taskMattersListSearchValue"
+                          placeholder="Search Matters">
+                        <div class="input-group-append">
+                          <span class="input-group-btn">
+                            <button type="button" class="btn btn-sm  " style="border:0.5"
+                              onclick="searchTaskMattersList()">
+                              <i class="fas fa-search"></i>
+                            </button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="taskMattersListDiv" class="card-body" style="padding:0; height: 15rem; overflow: auto">
+                    <ul class="list-group">
+                      <li class="list-group-item hoverable text-dark">NO Matters</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6" id="createDirectoryColumn" style="display:none; text-align:left">
+                <h5 class=" mt-3" style="text-align:left">Create Directory</h5>
+                <p>Add Files to This Directory <a id="taskFolderLink" target="_blank">Here</a></p>
+                <div class="form-group">
+                  <lable> Directory name</lable>
+                  <input type="text" class="form-control" placeholder="Directory name" id="taskFolderName">
+                </div>
+                <p style="font-size:0.7rem">*The name and location of the directory is updated when the task is created
+                </p>
+              </div>
+              <div class="col-12 mt-3" id="attachedEmailColumn" style="display:none">
+                <div class="row mb-2">
+                  <div class="col-3 my-auto">
+                    <h5 class="my-auto" style="text-align:left">Attached Email</h5>
+                  </div>
+                  <div class="col" style="text-align:left">
+                    <button type="button" class="btn btn-xs btn-outline-primary btn-icon"
+                      onclick="clearTaskEmailModal()">
+                      <span class="btn-inner--icon">
+                        <i class="fas fa-redo"></i>
+                      </span>
+                      <span class="btn-inner--text">Reset Email</span>
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-primary btn-icon" data-dismiss="modal"
+                      data-toggle="modal" data-target="#task-email-modal" onclick="onOpenTaskEmailModal()">
+                      <span class="btn-inner--icon">
+                        <i class="far fa-edit"></i>
+                      </span>
+                      <span class="btn-inner--text">Edit Email</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="row">
+                </div>
+                <div class="row">
+                  <div class="col-2" style="text-align:right">
+                    <p id="taskEmailDisplayTOLable">TO:</p>
+                  </div>
+                  <div class="col" style="text-align:left" id="taskEmailDisplayTO"></div>
+                </div>
+                <div class="row">
+                  <div class="col-2" style="text-align:right">
+                    <p>CC:</p>
+                  </div>
+                  <div class="col" style="text-align:left" id="taskEmailDisplayCC"></div>
+                </div>
+                <div class="row">
+                  <div class="col-2" style="text-align:right">
+                    <p>SUBJECT:</p>
+                  </div>
+                  <div class="col" style="text-align:left" id="taskEmailDisplaySubject"></div>
+                </div>
+                <div class="row">
+                  <div class="col-2" style="text-align:right">
+                    <p>MESSAGE:</p>
+                  </div>
+                  <div class="col" style="text-align:left" id="taskEmailDisplayMessage"></div>
+                </div>
+                <div class="row">
+                  <div class="col-2" style="text-align:right">
+                    <p>FILES:</p>
+                  </div>
+                  <div class="col" style="text-align:left" id="taskEmailDisplayFiles"></div>
+                  <input type="hidden" id="taskEmailFileIDs">
+                </div>
+              </div>
+            </div>
+            <h5 class=" mt-3" style="text-align:left">Dates</h5>
+            <div class="form-row">
+              <div class="col">
+                <label class="form-control-label">Start Date</label>
+                <input type="text" class="form-control" data-toggle="date" placeholder="YYYY-MM-DD" id="taskStartDate">
+              </div>
+              <div class="col">
+                <label class="form-control-label">Due Date</label>
+                <input type="text" class="form-control" data-toggle="date" placeholder="YYYY-MM-DD" id="taskDueDate">
+              </div>
+            </div>
+            <h5 class=" mt-3" style="text-align:left">Members</h5>
+            <div class="form-row">
+              <div class="col-6">
+                <p id="taskAssignedMemberName" value="woah" style="text-align:left"> Assigned Member:</p>
+                <input type="hidden" id="taskAssignedMemberID">
+                <div class="card">
+                  <div class="row align-items-center" id="taskAssignedMemberListSearchBar"
+                    style="margin:0; display:inline">
+                    <div class="form-group mb-0">
+                      <div class="input-group input-group-merge input-group-sm">
+                        <input type="text" class="form-control   " style="border:0.5"
+                          id="taskAssignedMemberListSearchValue" placeholder="Search Members">
+                        <div class="input-group-append">
+                          <span class="input-group-btn">
+                            <button type="button" class="btn btn-sm  " style="border:0.5"
+                              onclick="searchTaskAssignedMemberList()">
+                              <i class="fas fa-search"></i>
+                            </button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="taskAssignedMemberListDiv" class="card-body"
+                    style="padding:0; height: 15rem; overflow: auto">
+                    <ul class="list-group">
+                      <li class="list-group-item hoverable  text-dark">NO Members</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="col-6">
+                <p id="taskResponsibleMemberName" value="woah" style="text-align:left"> Responsible Member:</p>
+                <input type="hidden" id="taskResponsibleMemberID">
+                <div class="card">
+                  <div class="row align-items-center" id="taskResponsibleMemberListSearchBar"
+                    style="margin:0; display:inline">
+                    <div class="form-group mb-0">
+                      <div class="input-group input-group-merge input-group-sm">
+                        <input type="text" class="form-control" style="border:0.5"
+                          id="taskResponsibleMemberListSearchValue" placeholder="Search Members">
+                        <div class="input-group-append">
+                          <span class="input-group-btn">
+                            <button type="button" class="btn btn-sm" style="border:0.5"
+                              onclick="searchTaskResponsibleMemberList()">
+                              <i class="fas fa-search"></i>
+                            </button>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="taskResponsibleMemberListDiv" class="card-body"
+                    style="padding:0; height: 15rem; overflow: auto">
+                    <ul class="list-group">
+                      <li class="list-group-item hoverable text-dark">NO Members</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div id="showTaskDiv" style="display:none">
+          <h5 class="" id="displayTaskTitle"> TITLE placeholder</h5>
+          <p id="displayTaskType" style="text-align:left">Type: placeholder</p>
+          <p id="displayTaskDescription" style="text-align:left">Description: placeholder</p>
+          <div class="row">
+            <div class="col-6" style="text-align:center">
+              <p id="displayTaskAssignedMember" style="font-size:0.7rem"></p>
+            </div>
+            <div class="col-6">
+              <p id="displayTaskResponsibleMember" style="font-size:0.7rem"></p>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-4" style="text-align:center">
+              <p id="displayTaskStartDate" style="font-size:0.7rem"></p>
+            </div>
+            <div class="col-4">
+              <p id="displayTaskDueDate" style="font-size:0.7rem"></p>
+            </div>
+            <div class="col-4">
+              <p id="displayTaskDateCompleted" style="font-size:0.7rem"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Footer -->
+      <div class="modal-footer" style="margin:0">
+        <div class="container">
+          <div class="row" id="taskMetadataRow" style="display:none">
+            <div class="col-8" style="text-align:left">
+              <p id="taskCreated" style="margin:0; font-size:0.7rem">Created: N/A</p>
+              <p id="taskModified" style="margin:0; font-size:0.7rem">Last Modified: N/A</p>
+            </div>
+            <div class="col">
+            </div>
+            <div class="col-3" style="text-align:right">
+              <span>
+                <button type="button" id="openEditTaskBtn" class="btn btn-xs btn-outline-primary btn-icon-only"
+                  onclick="onOpenAddEditTaskModal('edit')">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-edit"></i>
+                  </span>
+                </button>
+                <button id="openEditTaskBtnLoading" style="display:none" type="button"
+                  class="btn btn-outline-primary btn-xs btn-icon-only" disabled>
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                </button>
+                <button id="deleteTaskBtn" type="button" class="btn btn-xs btn-outline-danger btn-icon-only"
+                  onclick="deleteTask()">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-trash-alt"></i>
+                  </span>
+                </button>
+                <button id="deleteTaskBtnLoading" style="display:none" type="button"
+                  class="btn btn-outline-danger btn-xs btn-icon-only" disabled>
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                </button>
+              </span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <p id="deleteTaskSuccessMessage" style="display:none; text-align:center" class="text-danger mb-0">Task
+                Deleted Successfully.</p>
+            </div>
+          </div>
+          <div class="row" id="taskAddEditButtonsRow" style="display:none">
+            <div class="col">
+              <p id="addTaskFailedEmailMessage" style="display:none" class="text-danger">The email failed to send.</p>
+            </div>
+            <div class="col" style="text-align:center">
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addTaskBtnID"
+                style="display:none; margin:auto" onclick="addTask()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-plus"></i>
+                </span>
+                <span class="btn-inner--text">Add Task</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addTaskBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Adding Task</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editTaskBtnID"
+                style="display:none; margin:auto" onclick="editTask()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-plus"></i>
+                </span>
+                <span class="btn-inner--text">Edit Task</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editTaskBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Editing Task</span>
+              </button>
+            </div>
+            <div class="col">
+              <p id="addTaskSuccessMessage" style="display:none" class="text-success">Task Added Successfully.</p>
+              <p id="editTaskSuccessMessage" style="display:none" class="text-success">Task Edited Successfully.</p>
+              <p id="addTaskNullFieldsMessage" style="display:none" class="text-danger">Please Fill Out All
+                Required Fields.</p>
+              <p id="addTaskBadDateMessage" style="display:none" class="text-danger">Please Enter A Due Date After Your
+                Start Date.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!------------------------------------------------------ Task Email Modal ------------------------------------------------------->
+
+<div class="modal fade" id="task-email-modal" data-backdrop="static" tabindex="-1" role="dialog"
+  aria-labelledby="task-email-modal" aria-hidden="true" style="overflow-y:auto">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-3">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-list" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="task-email-modal-title">Task Email</div>
+              </div>
+            </div>
+            <div class="col-6">
+            </div>
+            <div class="col-3">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="col-2 my-auto" style="text-align:right; display:flex; justify-content:space-between">
+            <button id="taskEmailTODownBtn" type="button" class="btn btn-secondary-link btn-icon-only border-none"
+              onclick="toggleMemberDropdown('down', 'TO')">
+              <span class="btn-inner--icon">
+                <i class="fas fa-chevron-down"></i>
+              </span>
+            </button>
+            <button id="taskEmailTOUpBtn" type="button" class="btn btn-secondary-link btn-icon-only border-none"
+              style="display:none" onclick="toggleMemberDropdown('up', 'TO')">
+              <span class="btn-inner--icon">
+                <i class="fas fa-chevron-up"></i>
+              </span>
+            </button>
+            <p class="my-auto">To: </p>
+          </div>
+          <div class="col">
+            <input type="text" class="form-control" placeholder="Recipient" id="taskEmailTO">
+          </div>
+        </div>
+        <div id="taskEmailTOOuterDiv" style="display:none">
+          <div class="row">
+            <div class="col-2"></div>
+            <div class="col">
+              <p class="my-auto" style="text-align:left" id="taskEmailTOTitle">Members to Email</p>
+              <div id="taskEmailTODiv" style="max-height: 7rem; overflow-y: auto; overflow-x: hidden">
+              </div>
+            </div>
+          </div>
+        </div>
+        <br>
+        <div class="form-row">
+          <div class="col-2 my-auto" style="text-align:right; display:flex; justify-content:space-between">
+            <button id="taskEmailCCDownBtn" type="button" class="btn btn-secondary-link btn-icon-only border-none"
+              onclick="toggleMemberDropdown('down', 'CC')">
+              <span class="btn-inner--icon">
+                <i class="fas fa-chevron-down"></i>
+              </span>
+            </button>
+            <button id="taskEmailCCUpBtn" type="button" class="btn btn-secondary-link btn-icon-only border-none"
+              style="display:none" onclick="toggleMemberDropdown('up', 'CC')">
+              <span class="btn-inner--icon">
+                <i class="fas fa-chevron-up"></i>
+              </span>
+            </button>
+            <p class="my-auto">CC: </p>
+          </div>
+          <div class="col">
+            <input type="text" class="form-control" placeholder="Carbon Copy" id="taskEmailCC">
+          </div>
+        </div>
+        <div id="taskEmailCCOuterDiv" style="display:none">
+          <div class="row">
+            <div class="col-2"></div>
+            <div class="col">
+              <p class="my-auto" style="text-align:left">Members to CC</p>
+              <div id="taskEmailCCDiv" style="max-height: 7rem; overflow-y: auto; overflow-x: hidden">
+              </div>
+            </div>
+          </div>
+        </div>
+        <br>
+        <div class="form-row">
+          <div class="col-2 my-auto" style="text-align:right">
+            <p class="my-auto">Subject: </p>
+          </div>
+          <div class="col">
+            <input type="text" class="form-control" placeholder="Subject" id="taskEmailSubject">
+          </div>
+        </div>
+        <br>
+        <div class="form-row">
+          <div class="col-2 my-auto" style="text-align:right">
+            <p class="my-auto">Message: </p>
+          </div>
+          <div class="col">
+            <textarea class="form-control" placeholder="Message" id="taskEmailMessage" rows="3"></textarea>
+          </div>
+        </div>
+        <br>
+        <b>Select Files From Directory To Attach</b>
+        <div id="taskEmailAttachedFilesDiv" style="max-height: 7rem; overflow-y: auto">
+        </div>
+      </div>
+      <!-- Footer -->
+      <div class="modal-footer" style="margin:0">
+        <button type="button" class="btn btn-sm btn-outline-danger btn-icon" style="padding: 0.75rem;"
+          data-dismiss="modal" data-toggle="modal" data-target="#modal-add-edit-task">
+          <span class="btn-inner--icon"><i class="fas fa-times"></i></span>
+          <span class="btn-inner--text">Cancel</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary btn-icon" data-dismiss="modal" data-toggle="modal"
+          data-target="#modal-add-edit-task" onclick="updateTaskEmail()" style="display:inline">
+          <span class="btn-inner--icon"><i class="far fa-edit"></i></span>
+          <span class="btn-inner--text">Update Email</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!------------------------------------------------------ Add New Task TYPE Modal ------------------------------------------------------>
+
+<div class="modal fade" id="addNewTaskTypeModal" tabindex="-1" role="dialog" aria-labelledby="addNewTaskTypeModal"
+  aria-hidden="true" style="overflow-y:auto">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content" onclick="hideAddTypeSuccessMessage()">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-9">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-list" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="TaskOptionModalTitle">Add New Task Type</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="row">
+          <div class="col">
+            <form>
+              <div class="form-group" style="text-align:left">
+                <p class="my-auto">Name of Task Type</p>
+                <input id="taskTypeName" type="text" class="form-control" placeholder="Name">
+              </div>
+              <div class="form-row">
+                <div class="col-5 my-auto" style="text-align: right">
+                  <p class="my-auto">Time Period to Respond:</p>
+                </div>
+                <div class="col-2">
+                  <input id="taskTypeTime" type="text" class="form-control" style="text-align:right; padding-left:0"
+                    placeholder="##">
+                </div>
+                <div class="col">
+                  <select id="taskTypeTimeFormat" class="custom-select">
+                    <option value="Months">Months</option>
+                    <option value="Days">Days</option>
+                  </select>
+                </div>
+              </div><br>
+              <div class="form-group" style="text-align:left">
+                <div style="display:flex">
+                  <p class="my-auto">Email Template (optional) </p>
+                  <div class="btn-group dropright ml-2 mb-1">
+                    <button type="button"
+                      class="btn btn-soft-secondary btn-xs rounded-circle btn-icon-only bg-white border-0"
+                      data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="color:#8492a6">
+                      <span class="btn-inner--icon">
+                        <i class="fas fa-question"></i>
+                      </span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-lg bg-light">
+                      <p class="ml-2 p-2"> The email template will be applied to all tasks of this created type. There
+                        are four fields that can be autopopulated with data during the creation of a task, and they must
+                        be inputted into the template as follows: {{DocketNo}}, {{TaskType}} {{Recipient}}, {{DueDate}}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <textarea id="taskTypeEmailBody" class="form-control" placeholder="Email Template"
+                  rows="4">Dear {{Recipient}},
+Attached please find a PDF copy of a {{TaskType}} we received in {{DocketNo}}. The deadline for completing this task is {{DueDate}}.</textarea>
+              </div>
+            </form>
+          </div>
+        </div>
+        <!-- Footer -->
+        <div class="modal-footer" style="padding-bottom:0; text-align:center">
+          <div class="container">
+            <div class="row">
+              <div class="col">
+                <button id="addTaskTypeBtn" type="button" class="btn btn-sm btn-outline-primary btn-icon margin-auto"
+                  onclick="addTaskType()">
+                  <span class="btn-inner--icon"><i class="fas fa-plus"></i></span>
+                  <span class="btn-inner--text">Add Task Type</span>
+                </button>
+                <button id="addTaskTypeBtnLoading" type="button"
+                  class="btn btn-sm btn-outline-primary btn-icon margin-auto" style="display:none" disabled>
+                  <span class="btn-inner--icon"><i class="fas fa-spinner fa-spin"></i></span>
+                  <span class="btn-inner--text">Adding Task Type</span>
+                </button>
+              </div>
+            </div>
+            <div id="addTaskTypeMessages" class="row">
+              <div id="addTaskTypeSuccessMessage" style="display:none" class="col">
+                <p style="margin-top:1rem; margin-bottom:0" class="text-success">Task Type Added Successfully.</p>
+              </div>
+              <div id="addTaskTypeNullFieldsMessage" style="display:none" class="col">
+                <p style="margin-top:1rem; margin-bottom:0" class="text-danger">Ensure That All Required Fields Are
+                  Filled In.</p>
+              </div>
+              <div id="addTaskTypeUniqueNameMessage" style="display:none" class="col">
+                <p style="margin-top:1rem; margin-bottom:0" class="text-danger">Ensure That the Task Type Name is
+                  Unique.</p>
+              </div>
+              <div id="addTaskTypeInvalidTimeMessage" style="display:none" class="col">
+                <p style="margin-top:1rem; margin-bottom:0" class="text-danger">Ensure That the Time is a Positive
+                  Integer.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

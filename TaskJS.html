@@ -1,0 +1,1830 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------------   Show Task Functions   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * filters list of task IDs to only hold uncompleted tasks, adds wrapper html to be displayed as a list
+   *
+   * @param {string} taskIDs: a string of tasks IDs as stored in jsonData and the sheet
+   * @retun {string} taskStr: a sting of HTML list elements listing the tasks
+   */
+  function getActiveTaskStr(taskIDs) {
+    var taskStr = '<li class="list-group-item">NO ACTIVE TASKS</li>';
+    if (taskIDs) {
+      var taskIDs = taskIDs.split(',');
+      //remove null tasks from list
+      var existingTaskIDs = [];
+      for (var i = 0; i < taskIDs.length; i++) {
+        var task = jsonData.tasks[taskIDs[i]];
+        if (task) {
+          existingTaskIDs.push(taskIDs[i]);
+        }
+      }
+      // filter out completed tasks by checking if tasks has a DUEDATE field
+      existingTaskIDs = existingTaskIDs.filter(function (t1) { return !(jsonData.tasks[t1]["DateCompleted"]) });
+      // no need to sort the existingTaskIDs by date as they are stored in sorted order
+      //create HTML for task list
+      taskStr = "";
+      var task, date, member;
+      var members = Object.values(jsonData.members);
+      for (var i = 0; i < existingTaskIDs.length; i++) {
+        task = jsonData.tasks[existingTaskIDs[i]];
+        date = new Date(task["DueDate"]);
+        date = new Date(date.setDate(date.getDate()));
+        member = "";
+        // get member assigned to the task
+        for (var j = 0; j < members.length; j++) {
+          var memberTasks = members[j]["TaskAssignedID"];
+          if (memberTasks) {
+            if (memberTasks.split(",").includes(task["ID"])) {
+              member = members[j];
+              break;
+            }
+          }
+        }
+        var bg; // class for the background color (white if viewed, gray if not yet viewed)
+        if (task["DateViewed"]) {
+          bg = "bg-white";
+        } else {
+          bg = "bg-light";
+        }
+        taskStr += '<li class="list-group-item hoverable' + bg + '" id ="' + task.ID + '" style="text-align:left" data-toggle="modal" data-target="#modal-add-edit-task" onclick = "showTaskInfo(\'' + task.ID + '\')"><div class="row"><div class="col-4" style="text-align:left">' + task.Title + '</div><div class="col-4">' + member["Email"] + '</div><div class="col-4"style="text-align:right">' + date.toDateString() + '</div></div></li>';
+      }
+    }
+
+    if (taskStr == "") { //if all tasks are no longer valid
+      taskStr = '<li class="list-group-item">NO ACTIVE TASKS</li>';
+    }
+    return taskStr;
+  }
+
+
+  /**
+   * filters list of task IDs to only hold completed tasks, adds wrapper html to be displayed as a timeline
+   *
+   * @param {string} taskIDs: a string of tasks IDs as stored in jsonData and the sheet
+   * @retun {string} taskStr: a sting of HTML timelimne elements listing the tasks
+   */
+  function getTaskTimelineStr(taskIDs) {
+    var timelineStr = '';
+    if (taskIDs) {
+      var taskIDs = taskIDs.split(',');
+      //remove null tasks from list
+      var existingTaskIDs = [];
+      for (var i = 0; i < taskIDs.length; i++) {
+        var task = jsonData.tasks[taskIDs[i]];
+        if (task) {
+          existingTaskIDs.push(taskIDs[i]);
+        }
+      }
+      // filter out incompleted completed tasks by checking if tasks has a value in the DateCompleted field
+      existingTaskIDs = existingTaskIDs.filter(function (t1) { return jsonData.tasks[t1]["DateCompleted"] });
+      // no need to sort the existingTaskIDs as they are stored in sorted order
+      // create HTML for task timeline sorted from soonest to oldest
+      var task, date, member, memberID;
+      for (var i = existingTaskIDs.length - 1; i > -1; i--) {
+        task = jsonData.tasks[existingTaskIDs[i]];
+        date = new Date(task["DateCompleted"]);
+        memberID = getTaskMember(existingTaskIDs[i], "TaskAssignedID")
+        member = jsonData.members[memberID];
+        timelineStr += '<div class="timeline-block"><span class="timeline-step "></span><div class="timeline-content"><small class="text-muted font-weight-bold">' + date.toDateString();
+        timelineStr += '</small><h5 class="h6 ">' + task["Title"] + '</h5><p class=" text-sm mb-0">' + member["Email"] + '</p></div></div>';
+      }
+    }
+    if (timelineStr == '') { //if all tasks are no longer valid
+      timelineStr = '<div class="timeline-block"><span class="timeline-step "></span><div class="timeline-content"><small class="text-muted font-weight-bold">No Tasks Completed Yet For This Matter</small></div></div>';
+    }
+    return timelineStr;
+  }
+
+
+  /**
+   * Function to set up the add/edit task modal to display task information
+   * 
+   * @param {string} taskID: the ID of the task we wish to show the info for
+   */
+  function showTaskInfo(taskID) {
+    // set hidden tag
+    document.getElementById("selectedTaskID").value = taskID;
+    var task = jsonData.tasks[taskID];
+    // set modal title
+    document.getElementById("taskModalTitle").innerHTML = "View Task";
+    // set folder link if there is one 
+    var folderLink = "";
+    if (task["FolderID"]) {
+      folderLink = '    <a target="_blank" href="https://drive.google.com/drive/folders/' + task["FolderID"] + '"><i class="fab fa-google-drive"></i></a>';
+    }
+    // set body title
+    document.getElementById("displayTaskTitle").innerHTML = "<b>" + task["Title"] + "</b>" + folderLink;
+    // set type
+    var typeName = jsonData.taskTypes[task["TaskTypeID"]]["TaskTypeName"];
+    document.getElementById("displayTaskType").innerHTML = "Task Type: <b>" + typeName + "</b>";
+    // set description
+    document.getElementById("displayTaskDescription").innerHTML = "Description: <b>" + (task["Description"] || "") + "</b>";
+    // set dates
+    var start = new Date(task["StartDate"]);
+    var due = new Date(task["DueDate"]);
+    var completed;
+    if (task["DateCompleted"]) {
+      completed = new Date(task["StartDate"]);
+      completed = "on " + completed.toDateString();
+    } else {
+      completed = "False";
+    }
+    document.getElementById("displayTaskStartDate").innerHTML = 'Started: <b>' + start.toDateString() + "</b>";
+    document.getElementById("displayTaskDueDate").innerHTML = 'Due: <b>' + due.toDateString() + "</b>";
+    document.getElementById("displayTaskDateCompleted").innerHTML = 'Completed: <b>' + completed + "</b>";
+    // set member info
+    var responsibleMember, assignedMember;
+    var members = Object.values(jsonData.members);
+    for (var i = 0; i < members.length; i++) {
+      if (members[i]["TaskAssignedID"]) {
+        if (members[i]["TaskAssignedID"].split(',').includes(taskID)) {
+          assignedMember = members[i];
+        }
+      }
+      if (members[i]["TaskResponsibleID"]) {
+        if (members[i]["TaskResponsibleID"].split(',').includes(taskID)) {
+          responsibleMember = members[i];
+        }
+      }
+      // break once you have gotten the assigned and responsible member for a task
+      if (responsibleMember && assignedMember) {
+        break;
+      }
+    }
+    document.getElementById("displayTaskAssignedMember").innerHTML = "Assigned: <b>" + assignedMember["FirstName"] + " " + assignedMember["LastName"] + "</b>";
+    document.getElementById("displayTaskResponsibleMember").innerHTML = "Responsible: <b>" + responsibleMember["FirstName"] + " " + responsibleMember["LastName"] + "</b>";
+    // set Meta Data
+    var created = new Date(task["DateCreated"]);
+    var modified = new Date(task["DateModified"])
+    document.getElementById("taskCreated").innerHTML = 'Created: ' + task["CreatedBy"] + ', ' + created.toDateString();
+    document.getElementById("taskModified").innerHTML = 'Last Modified: ' + task["ModifiedBy"] + ', ' + modified.toDateString();
+    // hide/show buttons on modal based on user permissions
+    updateTaskModalPrivileges(task, task["CreatedBy"], assignedMember, responsibleMember);
+    // hide the acknowledge button if the user has already acknowledged it
+    if (task["DateViewed"]) {
+      document.getElementById("acknowledgeTaskBtn").style.display = "none";
+    }
+    // hide the close task button if the task has not been viewed or its been completed already
+    if (!task["DateViewed"] || task["DateCompleted"]) {
+      document.getElementById("closeTaskBtn").style.display = "none";
+    }
+    // actually show div
+    onOpenAddEditTaskModal("show");
+  }
+
+  /**
+   * update the view task modal with the users privileges
+   * 
+   * @param {object} task: the task we are displaying
+   * @param {string} creadtedBy: the email of the user who created the task
+   * @param {object} assigend: the dictionary with info of the user assigned to the given task
+   * @param {object} responsible: the dictionary with info of the user responsible for the given task
+   * 
+   */
+  function updateTaskModalPrivileges(task, createdBy, assigned, responsible) {
+    // Hide all privilege based buttons
+    document.getElementById("openEditTaskBtn").style.display = "none";
+    document.getElementById("deleteTaskBtn").style.display = "none";
+    document.getElementById("acknowledgeTaskBtn").style.display = "none";
+    document.getElementById("closeTaskBtn").style.display = "none";
+    // Go through and show privilege-based buttons according to the user's privilege level
+    var userPriv = jsonData.user["Privileges"];
+    if (userPriv > 0) {
+      // Show level 1 privileges (edit/delete task if the user created it, or is assigned/responsible for it)
+      // check to see if this task was created by the current user
+      if (createdBy == jsonData.user["Email"] || assigned["ID"] == jsonData.user["ID"] || responsible["ID"] == jsonData.user["ID"]) {
+        document.getElementById("openEditTaskBtn").style.display = "inline-block";
+        document.getElementById("deleteTaskBtn").style.display = "inline-block";
+      }
+      // show the acknowledge button if the user is assigned to this task
+      if (jsonData.user["ID"] == assigned["ID"]) {
+        document.getElementById("acknowledgeTaskBtn").style.display = "inline";
+      }
+      // show the close task button if the user is either assigned or responsible
+      if (jsonData.user["ID"] == assigned["ID"] || jsonData.user["ID"] == responsible["ID"]) {
+        document.getElementById("closeTaskBtn").style.display = "inline";
+      }
+
+      if (userPriv > 1) {
+        // Show level 2 privileges (edit/delete any task)
+        document.getElementById("openEditTaskBtn").style.display = "inline-block";
+        document.getElementById("deleteTaskBtn").style.display = "inline-block";
+        if (userPriv > 2) {
+          // show level 3 privileges (close/acknowledge any task)
+          document.getElementById("acknowledgeTaskBtn").style.display = "inline";
+          document.getElementById("closeTaskBtn").style.display = "inline";
+        }
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------------   Task Type Functions   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Function that adds a task type to the database
+   */
+  function addTaskType() {
+    // Check that the inputs are valid
+    var errorMsg = checkInvalidType();
+    if (errorMsg) {
+      // if the inputs were not valid, show the appropriate error message and exit this function call
+      document.getElementById(errorMsg).style.display = "block";
+      return;
+    }
+    // Set the button to loading
+    document.getElementById("addTaskTypeBtn").style.display = "none";
+    document.getElementById("addTaskTypeBtnLoading").style.display = "inline-block";
+    // Pull the fields from the html
+    var typeName = document.getElementById("taskTypeName").value;
+    var time = document.getElementById("taskTypeTime").value;
+    var timeFormat = document.getElementById("taskTypeTimeFormat").value;
+    var emailBody = document.getElementById("taskTypeEmailBody").value;
+    var taskType = { "TaskTypeName": typeName, "EmailBody": emailBody };
+    if (timeFormat == "Months") {
+      taskType["TimeToRespondMonths"] = time;
+    } else {
+      taskType["TimeToRespondDays"] = time;
+    }
+    // Call the server to add this task type
+    google.script.run.withSuccessHandler(onSuccessAddTaskType).withFailureHandler(onFailAddTaskType).addTaskType(taskType);
+  }
+
+
+  /**
+   * function to updated JSON and ui when type has been added to database 
+   */
+  function onSuccessAddTaskType(taskType) {
+    // update the json data
+    jsonData.taskTypes[taskType["ID"]] = taskType;
+    // Show the success message
+    document.getElementById("addTaskTypeSuccessMessage").style.display = "block"
+    // Reset the button from loading
+    document.getElementById("addTaskTypeBtnLoading").style.display = "none";
+    document.getElementById("addTaskTypeBtn").style.display = "inline-block";
+  }
+
+  /**
+   * alert the user that the call to the server failed to add a task type to the database
+   */
+  function onFailAddTaskType(err) {
+    alert("failed to add a new Task Type to the Database. Please refresh the page and try again. " + err);
+    // stop loading
+    document.getElementById("addTaskTypeBtnLoading").style.display = "none";
+    document.getElementById("addTaskTypeBtn").style.display = "block";
+  }
+
+  /**
+   * Checks inputted date for add type modal and invalidate fields if needed
+   * 
+   * @return {bool/string} either false if inputs are valid or an error message ID to be displayed in HTML
+   */
+  function checkInvalidType() {
+    // reset the fields and hide the error messages
+    document.getElementById("taskTypeName").className = "form-control"
+    document.getElementById("taskTypeTime").className = "form-control"
+    document.getElementById("addTaskTypeNullFieldsMessage").style.display = "none";
+    document.getElementById("addTaskTypeUniqueNameMessage").style.display = "none";
+    document.getElementById("addTaskTypeInvalidTimeMessage").style.display = "none";
+    // Get the required inputs from the html
+    var typeName = document.getElementById("taskTypeName").value;
+    var time = document.getElementById("taskTypeTime").value;
+    // Check for null entries
+    var nulls = false;
+    if (!typeName) {
+      nulls = true;
+      document.getElementById("taskTypeName").className = "form-control is-invalid";
+    }
+    if (!time) {
+      nulls = true;
+      document.getElementById("taskTypeTime").className = "form-control is-invalid pr-4";
+    }
+    if (nulls) {
+      return "addTaskTypeNullFieldsMessage";
+    }
+    // Check that the name is unique
+    var typeList = Object.values(jsonData.taskTypes);
+    for (var i = 0; i < typeList.length; i++) {
+      if (typeName.toLowerCase() == typeList[i]["TaskTypeName"].toLowerCase()) {
+        document.getElementById("taskTypeName").className = "form-control is-invalid";
+        return "addTaskTypeUniqueNameMessage";
+      }
+    }
+    // Check that time is a positive integer
+    if (time != parseInt(time) || parseInt(time) < 0) {
+      document.getElementById("taskTypeTime").className = "form-control is-invalid pr-4";
+      return "addTaskTypeInvalidTimeMessage";
+    }
+    return false;
+  }
+
+  // ----------------------------------------------------------------------   Task Type Helper Functions   -----------------------------------------------------------
+
+
+  /**
+   * hides success message for add type
+   */
+  function hideAddTypeSuccessMessage() {
+    document.getElementById("addTaskTypeSuccessMessage").style.display = "none";
+  }
+
+  // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------------   Add/Edit Task Functions   ----------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * pull info from modal and pass it along to server side to add a task, send email(s), and create calendar event
+   */
+  function addTask() {
+    // start loading 
+    document.getElementById("addTaskBtnID").style.display = "none";
+    document.getElementById("addTaskBtnIDLoading").style.display = "block";
+    // hide the error messages
+    hideAddEditTaskFailMessages();
+    // pull info from modal
+    var infoList = getTaskInfo();
+    if (typeof (infoList) == "string") {
+      // stop loading 
+      document.getElementById("addTaskBtnIDLoading").style.display = "none";
+      document.getElementById("addTaskBtnID").style.display = "block";
+      // show error message
+      document.getElementById(infoList).style.display = "block";
+      return;
+    }
+    // infoList format = [task, email, matter, assignedMember, responsibleMember]
+    var task = infoList[0];
+    var email = infoList[1];
+    var matter = infoList[2];
+    var assignedMember = infoList[3];
+    var responsibleMember = infoList[4];
+    google.script.run.withSuccessHandler(onSuccessAddTask).withFailureHandler(onFailAddTask).addTask(task, email, matter, assignedMember, responsibleMember, jsonData.tasks);
+  }
+
+  /**
+   * onSuccess function to be called after a task is successfully added
+   * 
+   * @param {object} infoList: an array all useful information returned from server side 
+   *                           [task(dict), matter(dict), assigned member(dict), responsible member(dict), email fail msg (string/bool) ]
+   */
+  function onSuccessAddTask(infoList) {
+    // stop loading 
+    document.getElementById("addTaskBtnIDLoading").style.display = "none";
+    document.getElementById("addTaskBtnID").style.display = "block";
+    // reset the modal
+    onOpenAddEditTaskModal("add");
+    // update JSON
+    var task = infoList[0];
+    var matter = infoList[1];
+    var assignedMember = infoList[2];
+    var responsibleMember = infoList[3];
+    jsonData.tasks[task["ID"]] = task;
+    jsonData.members[assignedMember["ID"]] = assignedMember;
+    if (responsibleMember) {
+      jsonData.members[responsibleMember["ID"]] = responsibleMember;
+    }
+    if (matter) {
+      jsonData.matters[matter["ID"]] = matter;
+    }
+    // if on the matters page, update list and card
+    if (jsonData.initParams['pageTitle'] == "Matters") {
+      // update matter list 
+      var type = document.getElementById("selectedType").value;
+      showMatters(type);
+      // update matter card
+      var matterID = document.getElementById("selectedMatterID").value;
+      showMatterInfo(matterID);
+      // reset the modal
+      onOpenAddEditTaskModal("addFromMatter");
+    } else if (jsonData.initParams['pageTitle'] == "Dashboard") { // if on the dashboard page, update the task lists
+      populateAssignedTasks();
+      populateResponsibleTasks();
+    } else if (jsonData.initParams['pageTitle'] == "Team") { // update the team list
+      updateMemberTaskList(assignedMember);
+    }
+    // show success message (and possibly a fail message for the email)
+    document.getElementById("addTaskSuccessMessage").style.display = "block";
+    var emailFailMessage = infoList[4];
+    if (emailFailMessage) {
+      document.getElementById(emailFailMessage).style.display = "block";
+    }
+  }
+
+
+  /**
+   * alerts the user that the call to add a task to the server has failed
+   */
+  function onFailAddTask(err) {
+    alert('An error occured while adding the task. Please refresh the page. ' + err);
+    // stop loading 
+    document.getElementById("addTaskBtnIDLoading").style.display = "none";
+    document.getElementById("addTaskBtnID").style.display = "block";
+  }
+
+  /**
+   * function to edit a task by pulling info from the ui and passing it to the server
+   */
+  function editTask() {
+    // start loading 
+    document.getElementById("editTaskBtnID").style.display = "none";
+    document.getElementById("editTaskBtnIDLoading").style.display = "block";
+    // hide the error messages
+    hideAddEditTaskFailMessages();
+    // pull info from modal
+    var infoList = getTaskInfo();
+    if (typeof (infoList) == "string") {
+      // stop loading 
+      document.getElementById("editTaskBtnIDLoading").style.display = "none";
+      document.getElementById("editTaskBtnID").style.display = "block";
+      // show error message
+      document.getElementById(infoList).style.display = "block";
+      return;
+    }
+    // infoList format = [task, email, matter, assignedMember, responsibleMember]
+    var task = infoList[0];
+    var email = infoList[1];
+    var matter = infoList[2];
+    var assignedMember = infoList[3];
+    var responsibleMember = infoList[4];
+    // pass along old info to edited tasks 
+    var taskID = document.getElementById("selectedTaskID").value;
+    var oldTask = jsonData.tasks[taskID];
+    task["ID"] = taskID;
+    task["DateCompleted"] = oldTask["DateCompleted"];
+    task["DateViewed"] = oldTask["DateViewed"];
+    task["EventID"] = oldTask["EventID"];
+
+    var oldMatterID = getTaskMatter(taskID);
+    var oldMatter = null;
+    console.log(oldMatterID);
+    if (oldMatterID) {
+      oldMatter = jsonData.matters[oldMatterID];
+    }
+    // if matter is an empty dictionary {}, set it equal to null to be handled appropriately in the gs function
+    if (Object.keys(matter).length == 0) {
+      matter = null;
+    }
+    // get members assigned to task to be edited
+    var oldAssignedMemberID = getTaskMember(taskID, "TaskAssignedID");
+    var oldAssignedMember = jsonData.members[oldAssignedMemberID];
+    var oldResponsibleMemberID = getTaskMember(taskID, "TaskResponsibleID");
+    var oldResponsibleMember = jsonData.members[oldResponsibleMemberID];
+    // Pack the info into the data array and then call the server to edit this task (functions cant take this many inputs unpacked)
+    var data = [task, email, oldMatter, matter, oldAssignedMember, assignedMember, oldResponsibleMember, responsibleMember];
+    google.script.run.withSuccessHandler(onSuccessEditTask).withFailureHandler(onFailEditTask).editTask(data, jsonData.tasks);
+  }
+
+  /**
+   * update UI and JSON when server has succesfully edited a task in the database
+   * 
+   * @param {object} infoList: an array holding useful info passed on from the server
+   *                           [task(dict), oldMatter(dict), matter(dict), oldAssignedMember(dict), assignedMember(dict), oldResponsibleMember(dict), responsibleMember(dict), emailFailMessage(bool/string)  ]
+   */
+  function onSuccessEditTask(infoList) {
+    // stop loading 
+    document.getElementById("editTaskBtnIDLoading").style.display = "none";
+    document.getElementById("editTaskBtnID").style.display = "block";
+    // split up input from gs function
+    var task = infoList[0];
+    var oldMatter = infoList[1];
+    var matter = infoList[2];
+    var oldAssignedMember = infoList[3];
+    var assignedMember = infoList[4];
+    var oldResponsibleMember = infoList[5];
+    var responsibleMember = infoList[6];
+    // update JSON
+    jsonData.tasks[task["ID"]] = task;
+    jsonData.members[assignedMember["ID"]] = assignedMember;
+    jsonData.members[responsibleMember["ID"]] = responsibleMember;
+    jsonData.members[oldAssignedMember["ID"]] = oldAssignedMember;
+    jsonData.members[oldResponsibleMember["ID"]] = oldResponsibleMember;
+    if (matter) {
+      jsonData.matters[matter["ID"]] = matter;
+    }
+    if (oldMatter) {
+      jsonData.matters[oldMatter["ID"]] = oldMatter;
+    }
+
+    // if on the matters page, update list and card
+    if (jsonData.initParams['pageTitle'] == "Matters") {
+      // update matter list 
+      var type = document.getElementById("selectedType").value;
+      showMatters(type);
+      // update matter card
+      var matterID = document.getElementById("selectedMatterID").value;
+      showMatterInfo(matterID);
+    } else if (jsonData.initParams['pageTitle'] == "Dashboard") { // if on the dashboard page, update the task lists
+      populateAssignedTasks();
+      populateResponsibleTasks();
+    } else if (jsonData.initParams['pageTitle'] == "Team") { // update the team list
+      updateMemberTaskList(oldAssignedMember);
+      updateMemberTaskList(assignedMember);
+    }
+    // show success message (and possibly a fail message for the email)
+    document.getElementById("editTaskSuccessMessage").style.display = "block";
+    var emailFailMessage = infoList[7];
+    if (emailFailMessage) {
+      document.getElementById(emailFailMessage).style.display = "block";
+    }
+
+  }
+
+  /**
+   * alerts the user if error occured while editing a task in the database
+   */
+  function onFailEditTask(err) {
+    alert('An error occured while editing the task. Please refresh the page. ' + err);
+    // stop loading 
+    document.getElementById("editTaskBtnIDLoading").style.display = "none";
+    document.getElementById("editTaskBtnID").style.display = "block";
+  }
+
+  /**
+   * updated task by either acknowledging or closing it based on input
+   * 
+   * @param {string} action: string used to tell if task should be acknowledged or closed
+   */
+  function acknowledgeOrCloseTask(action) {
+    // show loading 
+    document.getElementById(action + "TaskBtn").style.display = "none";
+    document.getElementById(action + "TaskBtnLoading").style.display = "inline";
+    var taskID = document.getElementById("selectedTaskID").value;
+    var task = jsonData.tasks[taskID];
+    // push this update to the server 
+    google.script.run.withSuccessHandler(onSuccessAcknowledgeOrCloseTask).withFailureHandler(onFailAcknowledgeOrCloseTask).acknowledgeOrCloseTask(task, action);
+  }
+
+  /**
+   * updates UI and JSON after updating the task
+   * 
+   * @param {object} updatedTask: dictionary of info on updated task 
+   */
+  function onSuccessAcknowledgeOrCloseTask(updatedTask) {
+    // hide the loading buttons
+    document.getElementById("acknowledgeTaskBtnLoading").style.display = "none";
+    document.getElementById("closeTaskBtnLoading").style.display = "none";
+    // hide the error messages
+    hideAddEditTaskFailMessages();
+    // update the json
+    jsonData.tasks[updatedTask["ID"]] = updatedTask;
+    // if on the matters page, update list and card
+    if (jsonData.initParams['pageTitle'] == "Matters") {
+      // update matter list 
+      var type = document.getElementById("selectedType").value;
+      showMatters(type);
+      // update matter card
+      var matterID = document.getElementById("selectedMatterID").value;
+      showMatterInfo(matterID);
+    } else if (jsonData.initParams['pageTitle'] == "Dashboard") { // if on the dashboard page, update the task lists
+      populateAssignedTasks();
+      populateResponsibleTasks();
+    } else if (jsonData.initParams['pageTitle'] == "Team") { // if on the team page, update the team list
+      var memberID = getTaskMember(updatedTask["ID"], "TaskAssignedID")
+      updateMemberTaskList(jsonData.members[memberID]);
+    }
+  }
+
+  /**
+   * alert the user if failed to acknowledge or close task in database
+   */
+  function onFailAcknowledgeOrCloseTask(err) {
+    alert("failed to acknowledge or close task, please reload page. " + err);
+    // hide the loading buttons
+    document.getElementById("acknowledgeTaskBtnLoading").style.display = "none";
+    document.getElementById("closeTaskBtnLoading").style.display = "none";
+  }
+
+
+  // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------------   Delete Task Functions   ----------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Function to delete a task from the server
+   */
+  function deleteTask() {
+    // start loading 
+    document.getElementById("deleteTaskBtn").style.display = "none";
+    document.getElementById("deleteTaskBtnLoading").style.display = "inline-block";
+    // Get the taskID, oldAssignedMember, oldResponsibleMember, and oldMatter (if there is one) to properly delete a task and update what pointed to it
+    var taskID = document.getElementById("selectedTaskID").value;
+    var task = jsonData.tasks[taskID];
+    var oldAssignedMemberID = getTaskMember(taskID, "TaskAssignedID");
+    var oldAssignedMember = jsonData.members[oldAssignedMemberID];
+    var oldResponsibleMemberID = getTaskMember(taskID, "TaskResponsibleID");
+    var oldResponsibleMember = jsonData.members[oldResponsibleMemberID];
+    var oldMatterID = getTaskMatter(taskID);
+    var oldMatter = null;
+    if (oldMatterID) {
+      oldMatter = jsonData.matters[oldMatterID];
+    }
+    // Call the server to perform this delete operation
+    google.script.run.withSuccessHandler(onSuccessDeleteTask).withFailureHandler(onFailDeleteTask).deleteTask(task, oldAssignedMember, oldResponsibleMember, oldMatter);
+  }
+
+  /**
+   * onSuccess function to be called after a task is successfully deleted
+   *
+   * @param {object} infoList: a list containing the following info: [deletedTask, updatedAssignedMember, updatedResponsibleMember, updatedMatter]
+   */
+  function onSuccessDeleteTask(infoList) {
+    // stop loading 
+    document.getElementById("deleteTaskBtnLoading").style.display = "none";
+    document.getElementById("deleteTaskBtn").style.display = "inline-block";
+    // hide footer so you cant do anything else with the task
+    document.getElementById("taskMetadataRow").style.display = "none";
+    // show delete success message
+    document.getElementById("deleteTaskSuccessMessage").style.display = "inline";
+    // update the jsonData
+    var deletedTask = infoList[0];
+    var updatedAssignedMember = infoList[1];
+    var updatedResponsibleMember = infoList[2];
+    var updatedMatter = infoList[3];
+    // null checks
+    delete jsonData.tasks[deletedTask["ID"]];
+    jsonData.members[updatedAssignedMember["ID"]] = updatedAssignedMember;
+    if (updatedResponsibleMember) {
+      jsonData.members[updatedResponsibleMember["ID"]] = updatedResponsibleMember;
+    }
+    if (updatedMatter) {
+      jsonData.matters[updatedMatter["ID"]] = updatedMatter;
+    }
+    // if on the matters page, update list and card
+    if (jsonData.initParams['pageTitle'] == "Matters") {
+      // update matter list 
+      var type = document.getElementById("selectedType").value;
+      showMatters(type);
+      // update matter card
+      var matterID = document.getElementById("selectedMatterID").value;
+      showMatterInfo(matterID);
+    } else if (jsonData.initParams['pageTitle'] == "Dashboard") { // if on the dashboard page, update the task lists
+      populateAssignedTasks();
+      populateResponsibleTasks();
+    } else if (jsonData.initParams['pageTitle'] == "Team") { //if on team page, update task list of member assigned
+      updateMemberTaskList(updatedAssignedMember);
+    }
+  }
+
+  /**
+   * alert user that the server call to delete a task has failed
+   */
+  function onFailDeleteTask(err) {
+    alert('An error occured while deleting the task. Please refresh the page. ' + err);
+    // stop loading 
+    document.getElementById("deleteTaskBtnLoading").style.display = "none";
+    document.getElementById("deleteTaskBtn").style.display = "inline-block";
+  }
+
+
+
+  // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------   Add/Edit Task Modal Helper Functions   -------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   *function called when add edit modal is opend to configure and populate the modal based on the action
+   *
+   * @param {string} action: the action the.modal will be completing - add, addFromMatter, edit, or show
+   */
+  function onOpenAddEditTaskModal(action) {
+    // clear all fields
+    resetAddEditTaskModal(action);
+    document.getElementById("modal-add-edit-task-size").className = "modal-dialog modal-dialog-centered modal-lg";
+    if (action == 'add' || action == 'addFromMatter') { // if we are adding a new task
+      // show add/edit body and footer
+      document.getElementById("addEditTaskDiv").style.display = "block";
+      document.getElementById("taskAddEditButtonsRow").style.display = "flex";
+      // show add button
+      document.getElementById("addTaskBtnID").style.display = "block";
+      // populate task type select
+      updateTaskTypeSelect();
+      // suggest date and title based on task type
+      updateTaskTypeSelection();
+      // populate matter list 
+      var matterString = getTaskMatterList(Object.values(jsonData.matters));
+      //append list options in HTML dynamically with Jquery
+      $("div[id='taskMattersListDiv']").find('li').remove().end().append($(matterString));
+
+      // select current matter to be assigned
+      if (action == 'addFromMatter') { // if we are adding from the matters page auto select the open matter
+        // check and disable box
+        document.getElementById("associateMatterCheckbox").checked = true;
+        document.getElementById("associateMatterCheckbox").disabled = true;
+        // set tags to selected matter
+        var matterID = document.getElementById("selectedMatterID").value;
+        var matter = jsonData.matters[matterID];
+        document.getElementById("selectedTaskMatterID").value = matterID;
+        document.getElementById("selectedTaskMatterDocketNo").innerHTML = "Selected Matter: " + matter["DocketNo"];
+        // show columnn
+        document.getElementById("associatedMatterColumn").style.display = "block";
+        // hide list 
+        document.getElementById("associatedMatterCard").style.display = "none";
+      } else { // else give option for user to select a matter
+        // enable check box
+        document.getElementById("associateMatterCheckbox").disabled = false;
+        // show list of matters
+        document.getElementById("associatedMatterCard").style.display = "flex";
+      }
+      // populate member list assigned
+      var assignedMemberString = getTaskAssignedMemberList(Object.values(jsonData.members));
+      // append list in HTML dynamically with Jquery
+      $("div[id='taskAssignedMemberListDiv']").find('li').remove().end().append($(assignedMemberString));
+      // populate member list responsible
+      var responsibleMemberString = getTaskResponsibleMemberList(Object.values(jsonData.members));
+      //append list in HTML dynamically with Jquery
+      $("div[id='taskResponsibleMemberListDiv']").find('li').remove().end().append($(responsibleMemberString));
+
+    } else if (action == 'edit') { // if we are editing a already created task
+      // show add/edit body and footer
+      document.getElementById("addEditTaskDiv").style.display = "block";
+      document.getElementById("taskAddEditButtonsRow").style.display = "flex";
+      // show edit button
+      document.getElementById("editTaskBtnID").style.display = "block"
+      // populate task type select
+      updateTaskTypeSelect();
+      // disable matter check box and hide matter div if editing task from matters page
+      if (jsonData.initParams["pageTitle"] == "Matters") {
+        document.getElementById("associateMatterCheckbox").disabled = true;
+        document.getElementById("associatedMatterCard").style.display = "none";
+      } else {
+        // populate matter list 
+        var matterString = getTaskMatterList(Object.values(jsonData.matters));
+        //append list options in HTML dynamically with Jquery
+        $("div[id='taskMattersListDiv']").find('li').remove().end().append($(matterString));
+      }
+      // populate member list assigned
+      var assignedMemberString = getTaskAssignedMemberList(Object.values(jsonData.members));
+      //append list options in HTML dynamically with Jquery
+      $("div[id='taskAssignedMemberListDiv']").find('li').remove().end().append($(assignedMemberString));
+      // populate member list responsible
+      var responsibleMemberString = getTaskResponsibleMemberList(Object.values(jsonData.members));
+      //append list options in HTML dynamically with Jquery
+      $("div[id='taskResponsibleMemberListDiv']").find('li').remove().end().append($(responsibleMemberString));
+      // populate task modal with known task information
+      populateTaskModal();
+    } else if (action == 'show') { // if user is viewing a task
+      // set modal size to medium
+      document.getElementById("modal-add-edit-task-size").className = "modal-dialog modal-dialog-centered";
+      //show display body and footer
+      document.getElementById("showTaskDiv").style.display = "block";
+      document.getElementById("taskMetadataRow").style.display = "flex";
+      // show the acknowledge/view button if its assigned to the user and has not been viewed
+    }
+  }
+
+  /**
+   * Function to reset the add/edit task modal (hides all alerts and buttons and clears all fields)
+   * 
+   * @param {string} action: string representing the action of the task modal we are resting 
+   */
+  function resetAddEditTaskModal(action) {
+    // hide body and footer divs
+    document.getElementById("showTaskDiv").style.display = "none";
+    document.getElementById("taskMetadataRow").style.display = "none";
+    document.getElementById("addEditTaskDiv").style.display = "none";
+    document.getElementById("taskAddEditButtonsRow").style.display = "none";
+    // Hide all buttons
+    document.getElementById("addTaskBtnID").style.display = "none";
+    document.getElementById("addTaskBtnIDLoading").style.display = "none";
+    document.getElementById("editTaskBtnID").style.display = "none";
+    document.getElementById("editTaskBtnIDLoading").style.display = "none";
+    if (action != "show") { // if we are not showing the task - hide acknowledge and close buttons
+      document.getElementById("acknowledgeTaskBtn").style.display = "none";
+      document.getElementById("acknowledgeTaskBtnLoading").style.display = "none";
+      document.getElementById("closeTaskBtn").style.display = "none";
+      document.getElementById("closeTaskBtnLoading").style.display = "none";
+    }
+    // Hide all messages
+    hideAddEditTaskSuccessMessages();
+    hideAddEditTaskFailMessages();
+    // Clear all fields and uncheck/enable all checkboxes
+    document.getElementById("taskDescription").value = null;
+    document.getElementById("associateMatterCheckbox").checked = false;
+    document.getElementById("associateMatterCheckbox").disabled = false;
+    document.getElementById("selectedTaskMatterID").value = null;
+    document.getElementById("createDirectoryCheckbox").checked = false;
+    document.getElementById("createDirectoryCheckbox").disabled = false;
+    document.getElementById("taskFolderID").value = null;
+    document.getElementById("sendEmailCheckbox").checked = false;
+    document.getElementById("selectedTaskMatterDocketNo").innerHTML = "Selected Matter: ";
+    document.getElementById("taskMattersListSearchValue").value = null;
+    document.getElementById("taskFolderLink").href = "";
+    document.getElementById("taskFolderName").value = null;
+    // clear values inputted in task email modal
+    clearTaskEmailModal();
+    // clear the rest of the values in the add/edit task modal
+    document.getElementById("taskStartDate").value = null;
+    document.getElementById("taskDueDate").value = null;
+    document.getElementById("selectedTaskMatterDocketNo").value = null;
+    document.getElementById("taskMattersListSearchValue").value = null;
+    document.getElementById("taskAssignedMemberName").innerHTML = "Assigned Member: ";
+    document.getElementById("taskAssignedMemberID").value = null;
+    document.getElementById("taskAssignedMemberListSearchValue").value = null;
+    document.getElementById("taskResponsibleMemberName").innerHTML = "Responsible Member: ";
+    document.getElementById("taskResponsibleMemberID").value = null;
+    document.getElementById("taskResponsibleMemberListSearchValue").value = null;
+    // Hide divs that should be initially hidden
+    document.getElementById("associatedMatterColumn").style.display = "none";
+    document.getElementById("createDirectoryColumn").style.display = "none";
+    document.getElementById("attachedEmailColumn").style.display = "none";
+    // set all fields to be valid
+    document.getElementById("taskTitle").className = "form-control";
+    document.getElementById("taskStartDate").className = "form-control flatpickr-input";
+    document.getElementById("taskDueDate").className = "form-control flatpickr-input";
+    document.getElementById("taskAssignedMemberName").className = "";
+    document.getElementById("taskResponsibleMemberName").className = "";
+    document.getElementById("selectedTaskMatterDocketNo").className = "";
+    document.getElementById("taskFolderName").className = "form-control";
+    document.getElementById("taskEmailDisplayTOLable").className = "";
+  }
+
+  /**
+   * Function that hides all of the task success messages in add/edit modal
+   */
+  function hideAddEditTaskSuccessMessages() {
+    document.getElementById("addTaskSuccessMessage").style.display = "none";
+    document.getElementById("editTaskSuccessMessage").style.display = "none";
+    document.getElementById("deleteTaskSuccessMessage").style.display = "none";
+  }
+
+  /**
+   * Function that hides all of the task fail messages in add/edit modal
+   */
+  function hideAddEditTaskFailMessages() {
+    document.getElementById("addTaskNullFieldsMessage").style.display = "none";
+    document.getElementById("addTaskBadDateMessage").style.display = "none";
+    document.getElementById("addTaskFailedEmailMessage").style.display = "none";
+  }
+
+  // ---------------------------------------------------------------------- Add/Edit Task Helper Functions ----------------------------------------------------------------------
+
+
+  /**
+   * Function that gets the task and email information from the html in order to create new dictionaries
+   *
+   * @return {object} returns a list of dictionaries [task, email, matter, assignedMember, responsibleMember] or an error message id if inputs are invalid
+   */
+  function getTaskInfo() {
+    var errorMsg = checkInvalidTask();
+    if (errorMsg) { // if check returns error message ID end and return error message ID
+      // if task is not valid, return null
+      return errorMsg;
+    }
+    var email = {};
+    var task = {};
+    var matterId = document.getElementById("selectedTaskMatterID").value;
+    var matterChecked = document.getElementById("associateMatterCheckbox").checked;
+    var matter = {};
+    if (matterId && matterChecked) {
+      matter = jsonData.matters[matterId];
+    }
+    var assignedMember = jsonData.members[document.getElementById("taskAssignedMemberID").value];
+    var responsibleMember = jsonData.members[document.getElementById("taskResponsibleMemberID").value];
+    // pull task info into a dictionary
+    task["Title"] = document.getElementById("taskTitle").value;
+    task["Description"] = document.getElementById("taskDescription").value;
+    task["FolderName"] = document.getElementById("taskFolderName").value;
+    task["FolderID"] = document.getElementById("taskFolderID").value;
+    task["TaskTypeID"] = document.getElementById("taskTypeSelect").value;
+    var startDate = document.getElementById("taskStartDate").value;
+    task["StartDate"] = startDate;
+    var dueDate = document.getElementById("taskDueDate").value;
+    task["DueDate"] = dueDate;
+
+    //pull email info into a dictionary if check box is checked
+    var emailChecked = document.getElementById("sendEmailCheckbox").checked;
+    if (emailChecked) {
+      email["TO"] = document.getElementById("taskEmailDisplayTO").textContent;
+      email["CC"] = document.getElementById("taskEmailDisplayCC").textContent;
+      email["Subject"] = document.getElementById("taskEmailDisplaySubject").textContent;
+      email["Message"] = document.getElementById("taskEmailDisplayMessage").textContent;
+      email["Files"] = document.getElementById("taskEmailFileIDs").value;
+    }
+    return [task, email, matter, assignedMember, responsibleMember];
+  }
+
+  /**
+   * Function to check if the fields for the task contain any invalid data
+   *
+   * @return {string/boolean} returns the id of an error message, or false if there are no errors
+   */
+  function checkInvalidTask() {
+    // set all field to be valid
+    document.getElementById("taskTitle").className = "form-control";
+    document.getElementById("taskStartDate").className = "form-control flatpickr-input";
+    document.getElementById("taskDueDate").className = "form-control flatpickr-input";
+    document.getElementById("taskAssignedMemberName").className = "";
+    document.getElementById("taskResponsibleMemberName").className = "";
+    document.getElementById("selectedTaskMatterDocketNo").className = "";
+    document.getElementById("taskFolderName").className = "form-control";
+    document.getElementById("taskEmailDisplayTOLable").className = "";
+    // Null Check
+    var nulls = false;
+    // title
+    var title = document.getElementById("taskTitle").value;
+    if (!title) {
+      nulls = true;
+      document.getElementById("taskTitle").className = "form-control is-invalid";
+    }
+    // dates
+    var start = document.getElementById("taskStartDate").value;
+    if (!start) {
+      nulls = true;
+      document.getElementById("taskStartDate").className = "form-control flatpickr-input is-invalid";
+    }
+    var due = document.getElementById("taskDueDate").value;
+    if (!due) {
+      nulls = true;
+      document.getElementById("taskDueDate").className = "form-control flatpickr-input is-invalid";
+    }
+    // members
+    var assigned = document.getElementById("taskAssignedMemberID").value;
+    if (!assigned) {
+      nulls = true;
+      document.getElementById("taskAssignedMemberName").className = "text-danger";
+    }
+    var responsible = document.getElementById("taskResponsibleMemberID").value;
+    if (!responsible) {
+      nulls = true;
+      document.getElementById("taskResponsibleMemberName").className = "text-danger";
+    }
+    // matter if checked
+    var checked = document.getElementById("associateMatterCheckbox").checked;
+    var matter = document.getElementById("selectedTaskMatterID").value;
+    if (checked && !matter) {
+      nulls = true;
+      document.getElementById("selectedTaskMatterDocketNo").className = "text-danger";
+    }
+    // folder name if checked
+    checked = document.getElementById("createDirectoryCheckbox").checked;
+    var folderName = document.getElementById("taskFolderName").value;
+    if (checked && !folderName) {
+      nulls = true;
+      document.getElementById("taskFolderName").className = "form-control is-invalid";
+    }
+    // email "TO" if checked
+    checked = document.getElementById("sendEmailCheckbox").checked;
+    var to = document.getElementById("taskEmailDisplayTO").textContent;
+    if (checked && !to) {
+      nulls = true;
+      document.getElementById("taskEmailDisplayTOLable").className = "text-danger";
+    }
+    // If any of the above fields were null, return the ID of the appropriate error message
+    if (nulls) {
+      return "addTaskNullFieldsMessage";
+    }
+    // Ensure the due date comes after start date
+    if (Date.parse(start) - Date.parse(due) > 0) {
+      document.getElementById("taskDueDate").className = "form-control is-invalid flatpickr-input";
+      return "addTaskBadDateMessage";
+    }
+    return false;
+  }
+
+  /**
+   * function to populate the add/edit task modal with info of the selected task when editing a task
+   */
+  function populateTaskModal() {
+    // get selected task info
+    var taskID = document.getElementById("selectedTaskID").value;
+    var task = jsonData.tasks[taskID];
+    // if there is a matter check the box and select the matter
+    var matterID = getTaskMatter(taskID)
+    if (matterID) {
+      document.getElementById("associateMatterCheckbox").checked = true;
+      // show matter column
+      document.getElementById("associatedMatterColumn").style.display = "block";
+      var matter = jsonData.matters[matterID];
+      document.getElementById("selectedTaskMatterDocketNo").innerHTML = "Selected Matter: " + matter["DocketNo"];
+      document.getElementById("selectedTaskMatterID").value = matterID;
+    }
+    // get assigned and responsible member
+    var assignedID = getTaskMember(taskID, "TaskAssignedID");
+    var responsibleID = getTaskMember(taskID, "TaskResponsibleID");
+    // set member ID's and names
+    document.getElementById("taskAssignedMemberID").value = assignedID;
+    document.getElementById("taskResponsibleMemberID").value = responsibleID;
+    document.getElementById("taskAssignedMemberName").innerHTML = "Assigned Member: " + jsonData.members[assignedID]["FirstName"] + " " + jsonData.members[assignedID]["LastName"];
+    document.getElementById("taskResponsibleMemberName").innerHTML = "Responsible Member: " + jsonData.members[responsibleID]["FirstName"] + " " + jsonData.members[responsibleID]["LastName"];
+    // set task info
+    document.getElementById("taskTitle").value = task["Title"] || "";
+    document.getElementById("taskDescription").value = task["Description"] || "";
+    document.getElementById("taskTypeSelect").value = task["TaskTypeID"];
+    // if there is a folder selected check box and set name
+    if (task["FolderID"]) {
+      document.getElementById("createDirectoryCheckbox").checked = true;
+      document.getElementById("createDirectoryCheckbox").disabled = true;
+      // show folder column
+      document.getElementById("createDirectoryColumn").style.display = "block";
+      //show link to folder
+      document.getElementById("taskFolderLink").href = "https://drive.google.com/drive/folders/" + task["FolderID"]
+      document.getElementById("taskFolderName").value = task["FolderName"];
+      document.getElementById("taskFolderID").value = task["FolderID"];
+    }
+    // format and set dates in YYYY-MM-DD format 
+    var start = new Date(task["StartDate"]);
+    var due = new Date(task["DueDate"]);
+    var startYear = start.getFullYear();
+    var startMonth = (start.getMonth() + 1); // months are returned zero indexed so add one
+    // prepend leading zeros to month and day if needed
+    if (startMonth < 10) {
+      startMonth = "0" + startMonth;
+    }
+    var startDay = start.getDate();
+    if (startDay < 10) {
+      startDay = "0" + startDay;
+    }
+    var formattedStart = startYear + "-" + startMonth + "-" + startDay;
+    var dueYear = due.getFullYear();
+    var dueMonth = (due.getMonth() + 1); // months are returned zero indexed so add one
+    if (dueMonth < 10) {
+      dueMonth = "0" + dueMonth;
+    }
+    var dueDay = due.getDate();
+    if (dueDay < 10) {
+      dueDay = "0" + dueDay;
+    }
+    var formattedDue = dueYear + "-" + dueMonth + "-" + dueDay;
+    document.getElementById("taskStartDate").value = formattedStart;
+    document.getElementById("taskDueDate").value = formattedDue;
+  }
+  // ---------------------------------------------------------------------- Populate Modal Helper Functions ----------------------------------------------------------------------
+
+  /**
+   * gets the matter ID connected with a given task by the tasks ID
+   *
+   * @param {string} taskID: the id of the task we're looking for
+   * @return {string} returns the id of the matter pointing to the given task (null if there is no matter that points to the task)
+   */
+  function getTaskMatter(taskID) {
+    var matterID = null;
+    var matters = Object.values(jsonData.matters);
+    for (var i = 0; i < matters.length; i++) {
+      if (matters[i]["TaskID"]) {
+        if (matters[i]["TaskID"].split(',').includes(taskID)) {
+          matterID = matters[i]["ID"];
+          break;
+        }
+      }
+    }
+    return matterID;
+  }
+
+
+  /**
+   * gets the member ID connected with a given task by the tasks ID
+   * 
+   * @param {string} taskID: ID of the task we want the member of
+   * @param {string} type: column name informing the function whether to pull the assigned or responsible member either: taskAssignedID or taskResponsibleID
+   *
+   * @return {string} memberID, the ID of the member found to be associated with the task in the given way
+   */
+  function getTaskMember(taskID, type) {
+    var task = jsonData.tasks[taskID];
+    var memberID = "";
+    var members = Object.values(jsonData.members);
+    for (var j = 0; j < members.length; j++) {
+      var memberTasks = members[j][type];
+      if (memberTasks) {
+        if (memberTasks.split(",").includes(task["ID"])) {
+          memberID = members[j]["ID"];
+          break;
+        }
+      }
+    }
+    return memberID;
+  }
+
+  /**
+   * function to updated the task Select with all created task types from JSON
+   */
+  function updateTaskTypeSelect() {
+    var types = Object.values(jsonData.taskTypes);
+    var selectStr = ""
+    var type;
+    for (var i = 0; i < types.length; i++) {
+      type = types[i];
+      selectStr += '<option value="' + type["ID"] + '">' + type["TaskTypeName"] + '</option>';
+    }
+    document.getElementById("taskTypeSelect").innerHTML = selectStr;
+  }
+
+  /**
+   * function to update the task modal information based on the task type selected
+   */
+  function updateTaskTypeSelection() {
+    var taskTypeID = document.getElementById("taskTypeSelect").value;
+    // suggest task type as the title
+    var taskName = jsonData.taskTypes[taskTypeID]["TaskTypeName"];
+    document.getElementById("taskTitle").value = taskName;
+    // update dates suggested
+    suggestTaskDates(taskTypeID);
+  }
+
+  /**
+   * suggestes a due date based one the current date and the give time period
+   *
+   * @param {string} taskTypeID: the ID of the type of task to create a due date for which contains a time period 
+   */
+  function suggestTaskDates(taskTypeID) {
+    var type = jsonData.taskTypes[taskTypeID];
+    var timeToRespond;
+    var startDate = new Date();
+    var endDate = new Date();
+    if (type["TimeToRespondMonths"]) { // the time to respond is in months
+      timeToRespond = type["TimeToRespondMonths"];
+      // add months
+      endDate.setMonth(endDate.getMonth() + timeToRespond);
+    } else { // else the time to respond is in days
+      timeToRespond = type["TimeToRespondDays"];
+      // add days
+      endDate.setDate(endDate.getDate() + timeToRespond)
+    }
+    // suggest start and end date in YYYY-MM-DD format
+    document.getElementById("taskStartDate").value = startDate.toISOString().slice(0, 10);
+    document.getElementById("taskDueDate").value = endDate.toISOString().slice(0, 10);
+  }
+
+  // ----------------------------------------------------------------------   Matter/Member List Functions   ----------------------------------------------------------
+
+  /**
+   * retund HTML list of members to be assigned
+   * 
+   * @param {object} memberList: array of dictionaries each holding info for a given member
+   * 
+   * @return {string} memberString - an HTML list of each member
+   */
+  function getTaskAssignedMemberList(memberList) {
+    // show the actual member list
+    var memberList = memberList.sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]); }); // list of members sorted alphabetically by last name;
+    // populate member string with HTML to show list of member
+    var memberString = "";
+    var listOption;
+    for (var i = 0; i < memberList.length; i++) {
+      listOption = '<li class="list-group-item  hoverable" id=' + memberList[i].ID + ' style="text-align:left" onclick = "selectTaskAssignedMember(\'' + memberList[i].ID + '\')">' + memberList[i].FirstName + " " + memberList[i].LastName + '</li>';
+      memberString += listOption;
+    }
+    return memberString;
+  }
+
+  /**
+   * Shows list of members to be responsible
+   * 
+   * @param {object} memberList: array of dictionaries each holding info for a given member
+   * 
+   * @return {string} memberString - an HTML list of each member
+   */
+  function getTaskResponsibleMemberList(memberList) {
+    // show the actual member list
+    var memberList = memberList.sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]); }); // list of members sorted alphabetically by last name;
+    // populate member string with HTML to show list of member
+    var memberString = "";
+    var listOption;
+    for (var i = 0; i < memberList.length; i++) {
+      listOption = '<li class="list-group-item  hoverable" id=' + memberList[i].ID + ' style="text-align:left" onclick = "selectTaskResponsibleMember(\'' + memberList[i].ID + '\')">' + memberList[i].FirstName + " " + memberList[i].LastName + '</li>';
+      memberString += listOption;
+    }
+    return memberString;
+  }
+
+  /**
+   * Shows list of matters to be selected
+   * 
+   * @param {object} matterList: array of dictionaries each holding info for a given matter
+   * 
+   * @return {string} matterString - an HTML list of each matter
+   */
+  function getTaskMatterList(matterList) {
+    // show the actual member list
+    //var matterList = Object.values(jsonData.matters).sort(compareMattersByDocketNo); // list of matters sorted by docket number;
+    var matterList = matterList.sort(compareMattersByDocketNo);
+    // populate matter string with HTML to show list of matters
+    var matterString = "";
+    var listOption;
+    for (var i = 0; i < matterList.length; i++) {
+      listOption = '<li class="list-group-item  hoverable" id=' + matterList[i].ID + ' style="text-align:left" onclick = "selectTaskMatter(\'' + matterList[i].ID + '\')">' + matterList[i].DocketNo + '</li>';
+      matterString += listOption;
+    }
+    return matterString;
+  }
+
+  /**
+   * Shows which member is chosen to be Assigned in HTML
+   * 
+   * @param {string} memberID: the id of the member selected to be assigned in task modal
+   */
+  function selectTaskAssignedMember(memberID) {
+    var member = jsonData.members[memberID];
+    document.getElementById("taskAssignedMemberName").innerHTML = "Assigned Member: " + member.FirstName + " " + member.LastName;
+    document.getElementById("taskAssignedMemberID").value = memberID;
+  }
+
+  /**
+   * Shows which member is chosen to be Responsible in the HTML
+   * 
+   * @param {string} memberID: the id of the member selected to be responsible in task modal
+   */
+  function selectTaskResponsibleMember(memberID) {
+    var member = jsonData.members[memberID];
+    document.getElementById("taskResponsibleMemberName").innerHTML = "Responsible Member: " + member.FirstName + " " + member.LastName;
+    document.getElementById("taskResponsibleMemberID").value = memberID;
+  }
+
+  /**
+  * Shows which matters is chosen for the task in the HTML
+  * 
+  * @param {string} matterID: the id of the matter selected to be assigned in task modal
+  */
+  function selectTaskMatter(matterID) {
+    var matter = jsonData.matters[matterID];
+    document.getElementById("selectedTaskMatterDocketNo").innerHTML = "Selected Matter: " + matter.DocketNo;
+    document.getElementById("selectedTaskMatterID").value = matterID;
+  }
+
+  // ----------------------------------------------------------------------   Search Functions   ----------------------------------------------------------
+
+  /**
+   * Function to search the matter list in the add/edit task modal and update HTML with search results
+   */
+  function searchTaskMattersList() {
+    // Get the search term
+    var searchTerm = document.getElementById("taskMattersListSearchValue").value;
+    var refinedList = [];
+    // Iterate through the matters and refine the list to matters whose docket numbers contain the search term
+    var matters = Object.values(jsonData.matters);
+    var matter;
+    for (var i = 0; i < matters.length; i++) {
+      matter = matters[i];
+      // save matter if its docket No contains the search term
+      if (matter["DocketNo"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(matter);
+      }
+    }
+    // sort the search results by date of soonest due task
+    refinedList.sort(compareMattersByDate);
+    // populate matter string with HTML to show list of matters
+    var matterString = getTaskMatterList(refinedList);// if the matter string is false, set it to show that there are no open matters
+    if (!matterString) {
+      matterString = '<li class="list-group-item ">NO OPEN MATTERS</li>';
+    }
+    // Place the matter string into the html
+    $("div[id='taskMattersListDiv']").find('li').remove().end().append($(matterString));
+  }
+
+  /**
+   * Function to search the assign member list in the add/edit task modal and update HTML with search results
+   */
+  function searchTaskAssignedMemberList() {
+    // Get the search term
+    var searchTerm = document.getElementById("taskAssignedMemberListSearchValue").value;
+    var refinedList = [];
+    // Iterate through the members and refine the list to memebrs whose name contain the search term
+    var members = Object.values(jsonData.members);
+    var member;
+    for (var i = 0; i < members.length; i++) {
+      member = members[i];
+      // save the member if their first name or last name contains the search term
+      if ((member["FirstName"] + " " + member["LastName"]).toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(member);
+      }
+    }
+    // sort the search results by date
+    refinedList.sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]); });
+    // populate member string with HTML to show list of members to be assigned
+    var memberString = getTaskAssignedMemberList(refinedList);// if the member string is false, set it to show that there are no members
+    if (!memberString) {
+      memberString = '<li class="list-group-item">NO MEMBERS</li>';
+    }
+    // Place the member string into the html
+    $("div[id='taskAssignedMemberListDiv']").find('li').remove().end().append($(memberString));
+  }
+
+  /**
+   * Function to search the assign member list in the add/edit task modal and update HTML with search results
+   */
+  function searchTaskResponsibleMemberList() {
+    // Get the search term
+    var searchTerm = document.getElementById("taskResponsibleMemberListSearchValue").value;
+    var refinedList = [];
+    // Iterate through the members and refine the list to members whose name contain the search term
+    var members = Object.values(jsonData.members);
+    var member;
+    for (var i = 0; i < members.length; i++) {
+      member = members[i];
+      // save member if first or last name contains the search term
+      if ((member["FirstName"] + " " + member["LastName"]).toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(member);
+      }
+    }
+    // sort the search results by date
+    refinedList.sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]); });
+    // populate memer string with HTML to show list of members
+    var memberString = getTaskResponsibleMemberList(refinedList);// if the member string is false, set it to show that there are no members
+    if (!memberString) {
+      memberString = '<li class="list-group-item">NO MEMBERS</li>';
+    }
+    // Place the member string into the html
+    $("div[id='taskResponsibleMemberListDiv']").find('li').remove().end().append($(memberString));
+  }
+
+  // ----------------------------------------------------------------------   Toggle Task info Functions   ----------------------------------------------------------
+
+  /**
+   * Hide and show matter div based on check box in add edit task modal 
+   */
+  function toggleAssociateMatterCheckbox() {
+    var checked = document.getElementById("associateMatterCheckbox").checked;
+    if (checked) {
+      // show matter selection div
+      document.getElementById("associatedMatterColumn").style.display = "block";
+    } else {
+      // hide matter selection div
+      document.getElementById("associatedMatterColumn").style.display = "none";
+    }
+  }
+
+  /**
+   * Hide and show directory div based on check box in add edit task modal 
+   */
+  function toggleCreateDirectoryCheckbox() {
+    var checked = document.getElementById("createDirectoryCheckbox").checked;
+    if (checked) {
+      // check if it has ever been checked before, if not, create a new directory
+      if (!document.getElementById("taskFolderID").value) {
+        // show a loading icon and disable the checkbox
+        document.getElementById("taskFolderLoading").style.display = "block"
+        document.getElementById("createDirectoryCheckbox").disabled = true;
+        // Get the name of the task type
+        var taskTypeID = document.getElementById("taskTypeSelect").value;
+        var taskTypeName = jsonData.taskTypes[taskTypeID]["TaskTypeName"];
+        // create directory for potential task in trash folder ( moved if task if eventually created)
+        google.script.run.withSuccessHandler(onSuccessCreateTaskFolder).withFailureHandler(onFailCreateTaskFolder).createTaskFolder(taskTypeName);
+        return;
+      }
+      // if folder has already been created for this (potential) task
+      // show create directory div
+      document.getElementById("createDirectoryColumn").style.display = "block";
+      // auto populate name suggestion
+      var taskTypeID = document.getElementById("taskTypeSelect").value;
+      var taskTypeName = jsonData.taskTypes[taskTypeID]["TaskTypeName"];
+      document.getElementById("taskFolderName").value = taskTypeName;
+      // Set the link to point to the created folder
+      var folderID = document.getElementById("taskFolderID").value;
+      var folderLink = "https://drive.google.com/drive/folders/" + folderID;
+      document.getElementById("taskFolderLink").href = folderLink;
+    } else {
+      // hide create directory div
+      document.getElementById("createDirectoryColumn").style.display = "none";
+    }
+  }
+
+  /**
+   * update UI and hidden tags after task folder is succesfully created in the trash folder
+   * 
+   * @param {string} folderID: the ID of the folder that was just created in drive
+   */
+  function onSuccessCreateTaskFolder(folderID) {
+    // set the hidden tag for the folder id
+    document.getElementById("taskFolderID").value = folderID;
+    // hide the loading icon and enable the checkbox
+    document.getElementById("taskFolderLoading").style.display = "none";
+    document.getElementById("createDirectoryCheckbox").disabled = false;
+    // complete the rest of the logic of the previous function
+    toggleCreateDirectoryCheckbox();
+  }
+
+  /**
+   * alert the user that the call to the server to create folder failed
+   */
+  function onFailCreateTaskFolder(err) {
+    alert("There was an error in creating the directory for this task. Please refresh this page. " + err);
+    // enable and uncheck the checkbox
+    document.getElementById("createDirectoryCheckbox").checked = false;
+    document.getElementById("createDirectoryCheckbox").disabled = false;
+    // stop loading
+    document.getElementById("taskFolderLoading").style.display = "none";
+  }
+
+  /**
+   * Hide/show email div based on check box in add edit task modal 
+   */
+  function toggleSendEmailCheckbox() {
+    var checked = document.getElementById("sendEmailCheckbox").checked;
+    if (checked) {
+      // show attach email div
+      document.getElementById("attachedEmailColumn").style.display = "block";
+    } else {
+      // hide attach email div
+      document.getElementById("attachedEmailColumn").style.display = "none";
+    }
+  }
+
+  // ----------------------------------------------------------------------   Task Email Modal Functions   ----------------------------------------------------------
+
+  /**
+   * When task email modal is opened populate all fields with known information
+   */
+  function onOpenTaskEmailModal() {
+    // pull all fields from modal or populate with default it none present
+    var taskTypeID = document.getElementById("taskTypeSelect").value;
+    var taskTypeName = jsonData.taskTypes[taskTypeID]["TaskTypeName"];
+    var matterCheckboxChecked = document.getElementById("associateMatterCheckbox").checked;
+    var selectedMatterID = document.getElementById("selectedTaskMatterID").value;
+    var selectedClient;
+    // pull all fields from modal
+    var prevTO = document.getElementById("taskEmailDisplayTO").textContent;
+    var prevCC = document.getElementById("taskEmailDisplayCC").textContent;
+    var prevSubject = document.getElementById("taskEmailDisplaySubject").textContent;
+    var prevMessage = document.getElementById("taskEmailDisplayMessage").textContent;
+    // pass along info if it exists - could be ""
+    document.getElementById("taskEmailTO").value = prevTO;
+    document.getElementById("taskEmailCC").value = prevCC;
+    if (prevMessage) {
+      document.getElementById("taskEmailMessage").value = prevMessage;
+    } else {
+      // populate body based on type template (filling in needed values where possible)
+      populateTaskEmailBody();
+    }
+    // if there is an associated matter suggest clients emails as recipients
+    if (matterCheckboxChecked && selectedMatterID) {
+      // we want to make a list of all emails associated with the client (their people and entities)
+      var matter = jsonData.matters[selectedMatterID];
+      // add checkboxes under TO input
+      populateTaskClientList(matter, prevTO);
+      // update the title to reflect that
+      document.getElementById("taskEmailTOTitle").textContent = "Contacts to Email";
+      // fill subject with docket no. and type and
+      var docketNo = matter["DocketNo"];
+      document.getElementById("taskEmailSubject").value = prevSubject || (docketNo + ": " + taskTypeName);
+    } else {
+      // we want to make a list of all members to choose their emails
+      populateTaskMemberList('taskEmailTO', prevTO);
+      // update the title to reflect that
+      document.getElementById("taskEmailTOTitle").textContent = "Members to Email";
+      // fill subject with type
+      document.getElementById("taskEmailSubject").value = prevSubject || taskTypeName;
+    }
+    // populate CC list with members
+    populateTaskMemberList('taskEmailCC', prevCC);
+    // populate file list from created directory if it exists and directory is checked
+    var folderChecked = document.getElementById("createDirectoryCheckbox").checked;
+    if (folderChecked) {
+      populateTaskFileList();
+    } else {
+      document.getElementById("taskEmailAttachedFilesDiv").innerHTML = "<b>No Directory Given</b>";
+    }
+
+  }
+
+  /**
+   * clears all fields in email display on task modal
+   */
+  function clearTaskEmailModal() {
+    // clear to
+    document.getElementById("taskEmailDisplayTO").innerHTML = "";
+    // cc
+    document.getElementById("taskEmailDisplayCC").innerHTML = "";
+    // subject
+    document.getElementById("taskEmailDisplaySubject").innerHTML = "";
+    // message
+    document.getElementById("taskEmailDisplayMessage").innerHTML = "";
+    // files and files hidden tag
+    document.getElementById("taskEmailDisplayFiles").innerHTML = "";
+    document.getElementById("taskEmailFileIDs").value = "";
+  }
+
+  /**
+   * updated stored email info with inputs to email modal
+   */
+  function updateTaskEmail() {
+    // pull from email modal
+    // to
+    var to = document.getElementById("taskEmailTO").value;
+    // cc
+    var cc = document.getElementById("taskEmailCC").value;
+    // subject
+    var subject = document.getElementById("taskEmailSubject").value;
+    // message
+    var message = document.getElementById("taskEmailMessage").value;
+    // files
+    var fileDiv = document.getElementById("taskEmailAttachedFilesDiv");
+    // get list of HTML elemets each a checkbox item
+    var innerChecks = fileDiv.getElementsByTagName('input');
+    var idList = [];
+    var nameList = [];
+    var name, id;
+    for (var i = 0; i < innerChecks.length; i++) {
+      if (innerChecks[i].checked) { // if the file checkbox is checked
+        idList.push(innerChecks[i].id);
+        nameList.push(innerChecks[i].name);
+      }
+    }
+    // set display on task modal
+    // to
+    document.getElementById("taskEmailDisplayTO").innerHTML = '<b>' + to + '</b>';
+    // cc
+    document.getElementById("taskEmailDisplayCC").innerHTML = '<b>' + cc + '</b>';
+    // subject
+    document.getElementById("taskEmailDisplaySubject").innerHTML = '<b>' + subject + '</b>';
+    // message
+    document.getElementById("taskEmailDisplayMessage").innerHTML = '<b>' + message + '</b>';
+    // files and files hidden tag
+    document.getElementById("taskEmailDisplayFiles").innerHTML = '<b>' + nameList.join(',') + '</b>';
+    document.getElementById("taskEmailFileIDs").value = idList.join(',');
+  }
+
+  /**
+   * create checkbox list of members for email modal - selecting any that were already selected 
+   * 
+   * @param {string} divID: id of the div to place member List in (taskEmailCC, or taskEmailTO)
+   * @param {string} prevEmails: comma separated string of emails that were previously selected 
+   */
+  function populateTaskMemberList(divID, prevEmails) {
+    var prevEmailList = prevEmails.toLowerCase().split(',');
+    var members = Object.values(jsonData.members);
+    // Sort the members by their last names
+    members.sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]); });
+    var checkList = "";
+    var checkBox = "";
+    var member;
+    for (var i = 0; i < members.length; i++) {
+      member = members[i];
+      checkBox = '<div class="form-row ml-1"> <div class="custom-control custom-checkbox" onchange="toggleTaskRecipient(\'' + member["ID"] + '\',\'' + divID + '\',\'' + 'members' + '\')">';
+      checkBox += '<input type="checkbox" class="custom-control-input" id="' + divID + '-' + member["ID"] + '"';
+      if (prevEmailList.includes(member["Email"].toLowerCase())) {
+        checkBox += 'checked >';
+      } else {
+        checkBox += '>';
+      }
+      checkBox += '<label class="custom-control-label"for="' + divID + '-' + member["ID"] + '">' + member["FirstName"] + ' ' + member["LastName"] + '</label></div></div>';
+      checkList += checkBox;
+    }
+    // place checkbox in HTML
+    document.getElementById(divID + "Div").innerHTML = checkList;
+  }
+
+  /**
+   * create checkbox list of contacts from given matter for email modal - selecting any that were previously inputted 
+   * creates list with all valid emails from contacts associated with client who owns the matter 
+   * 
+   * @param {object} matter: dictionary for selected matter for a task
+   * @param {string} prevEmails: comma separated string of emails that were previously selected 
+   */
+  function populateTaskClientList(matter, prevEmails) {
+    var prevEmailList = prevEmails.toLowerCase().split(',');
+    var clientID = matter["ClientID"];
+    var client = jsonData.clients[clientID];
+    var personStrs = client["PersonID"];
+    var entityStrs = client["EntityID"];
+    //perform Null Check for person IDs and entity IDs
+    var personIDs = [];
+    var entityIDs = [];
+    if (personStrs) {
+      personIDs = personStrs.split(',');
+    }
+    if (entityStrs) {
+      entityIDs = entityStrs.split(',');
+    }
+    // get all people CheckBoxes
+    var checkList = "";
+    var checkBox = "";
+    var person;
+    for (var i = 0; i < personIDs.length; i++) {
+      person = jsonData.persons[personIDs[i]];
+      if (person["Email"]) {// only display people with emails
+        checkBox = '<div class="form-row ml-1"> <div class="custom-control custom-checkbox" onchange="toggleTaskRecipient(\'' + person["ID"] + '\',\'' + 'taskEmailTO' + '\',\'' + 'persons' + '\')">';
+        checkBox += '<input type="checkbox" class="custom-control-input" id="taskEmailTO-' + person["ID"] + '"';
+        if (prevEmailList.includes(person["Email"].toLowerCase())) {
+          checkBox += 'checked >';
+        } else {
+          checkBox += '>';
+        }
+        checkBox += '<label class="custom-control-label"for="taskEmailTO-' + person["ID"] + '">' + person["FirstName"] + ' ' + person["LastName"] + '</label></div></div>';
+        checkList += checkBox;
+      }
+    }
+    // get all entity CheckBoxes
+    checkBox = "";
+    var entity;
+    for (var i = 0; i < entityIDs.length; i++) {
+      entity = jsonData.entities[entityIDs[i]];
+      if (entity["Email"]) {// only display entites with emails
+        checkBox = '<div class="form-row ml-1"> <div class="custom-control custom-checkbox" onchange="toggleTaskRecipient(\'' + entity["ID"] + '\',\'' + 'taskEmailTO' + '\',\'' + 'entities' + '\')">';
+        checkBox += '<input type="checkbox" class="custom-control-input" id="taskEmailTO-' + entity["ID"] + '"';
+        if (prevEmailList.includes(entity["Email"].toLowerCase())) {
+          checkBox += 'checked >';
+        } else {
+          checkBox += '>';
+        }
+        checkBox += '<label class="custom-control-label"for="taskEmailTO-' + entity["ID"] + '">' + entity["Name"] + '</label></div></div>';
+        checkList += checkBox;
+      }
+    }
+    // if there are no people or entites with valid emails notify the user as such
+    if (checkList == "") {
+      checkList = '<p>No Emails associated with the client of this matter</p>'
+    }
+    //place checkbox in HTML
+    document.getElementById("taskEmailTODiv").innerHTML = checkList;
+  }
+
+  /**
+   * create checkbox list of files pulled from directory for email modal
+   */
+  function populateTaskFileList() {
+    //var folderID = document.getElementById("").value;
+    var folderID = document.getElementById("taskFolderID").value;
+    if (folderID) { // if the task has a folder pull all files from the folder with server call
+      google.script.run.withSuccessHandler(onSuccessGetFiles).withFailureHandler(onFailGetFiles).getFilesFromFolder(folderID);
+    } else {
+      // no directory has been created so show no files
+    }
+  }
+
+  /**
+   * create checkbox list of files pulled from directory for email modal
+   * 
+   * @param {object} files: dictionary with file information in the form {file ID: file Name}
+   */
+  function onSuccessGetFiles(files) {
+    // pull ay prevously selected files
+    var prevFileIDs = document.getElementById("taskEmailFileIDs").value;
+    var prevFileList = prevFileIDs.split(',');
+    var fileIDs = Object.keys(files);
+    var checkList = "";
+    var checkBox = "";
+    var fileName, fileID;
+    // created check box list of all files in the drive
+    for (var i = 0; i < fileIDs.length; i++) {
+      fileID = fileIDs[i];
+      fileName = files[fileID];
+      checkBox = '<div class="form-row ml-1"> <div class="custom-control custom-checkbox" >';
+      checkBox += '<input type="checkbox" name="' + fileName + '" class="custom-control-input" id="' + fileID + '"';
+      if (prevFileList.includes(fileID)) { // set them to checked if they have previously been selected
+        checkBox += 'checked >';
+      } else {
+        checkBox += '>';
+      }
+      checkBox += '<label class="custom-control-label"for="' + fileID + '">' + fileName + '</label></div></div>';
+      checkList += checkBox;
+    }
+    // place checkbox list in HTML
+    document.getElementById("taskEmailAttachedFilesDiv").innerHTML = checkList;
+  }
+
+  /**
+   * Alert user function call failed
+   */
+  function onFailGetFiles(err) {
+    alert("pulling files failed, please reload page. " + err)
+  }
+
+  /**
+   * Function to populate the email body when creating a task
+   */
+  function populateTaskEmailBody() {
+    // Get the email body
+    var taskTypeID = document.getElementById("taskTypeSelect").value;
+    var emailBody = jsonData.taskTypes[taskTypeID]["EmailBody"];
+    // auto populate email body with known info
+    emailBody = populateFieldsFromJSON(emailBody);
+    // show email body in HTML
+    document.getElementById("taskEmailMessage").value = emailBody;
+  }
+
+  /**
+   * Helper function that parses through text and populates every instance of {{key}} where key could be DocketNo, TaskType, Recipient, DueDate
+   *
+   * @param {string} text: the text to be parsed through and updated
+   * @return {string} the updated text
+   */
+  function populateFieldsFromJSON(text) {
+    var docketNo, taskType, dueDate;
+    // check if there is a matter selected for the task
+    var matterID = document.getElementById("selectedTaskMatterID").value;
+    if (matterID) {
+      // get DocketNo
+      var matter = jsonData.matters[matterID];
+      docketNo = matter["DocketNo"];
+      //replace all fields with selected matter docketNo
+      text = text.replace(new RegExp('{{DocketNo}}', 'g'), docketNo);
+    }
+    // get Task Type
+    var taskTypeID = document.getElementById("taskTypeSelect").value;
+    taskType = jsonData.taskTypes[taskTypeID]["TaskTypeName"];
+    //replace all fields with selected task Type name
+    text = text.replace(new RegExp('{{TaskType}}', 'g'), taskType);
+    // replace DueDate
+    dueDate = document.getElementById("taskDueDate").value;
+    if (dueDate) { // populate due date field if one inputted
+      text = text.replace(new RegExp('{{DueDate}}', 'g'), dueDate);
+    }
+    // return the populated text
+    return text
+  }
+
+  /**
+   * populates all {{Recipient}} fields in the email body with the given name 
+   *  called when a TO is first selected  
+   */
+  function setBodyRecipient(name) {
+    var text = document.getElementById("taskEmailMessage").value;
+    text = text.replace(new RegExp('{{Recipient}}', 'g'), name);
+    document.getElementById("taskEmailMessage").value = text;
+  }
+
+
+  /**
+   * add or remove email from input field based on check box selection for a given checkbox
+   * 
+   * @param {string} recipientID: ID of the recipient selected or unselecetd
+   * @param {string} divID: ID of the input list to be updated (taskEmailTO or taskEmailCC)
+   * @param {string} type: type of recipient (members, persons, or entities)
+   */
+  function toggleTaskRecipient(recipientID, divID, type) {
+    var recipientEmail = jsonData[type][recipientID]["Email"].toLowerCase();
+    var ccInput = document.getElementById(divID).value.toLowerCase();
+    var recipientChecked = document.getElementById(divID + '-' + recipientID).checked;
+    var ccList, index;
+    var newCCStr = ccInput;
+    if (recipientChecked) {// add recipient email to list
+      if (ccInput != "") {// if list already has emails add it to the list 
+        ccList = ccInput.split(',');
+        index = ccList.indexOf(recipientEmail);
+        if (index == -1) { // if the email isn't already in the list, add it
+          ccList.push(recipientEmail);
+          newCCStr = ccList.join(",");
+        }
+      } else { // if the list is empty 
+        newCCStr = recipientEmail;
+        var body = document.getElementById("taskEmailMessage").value;
+        if (body.includes('{{Recipient}}')) { //if this is the first time selecting a member populate the email body with a recipient
+          var name;
+          if (type == "entities") { // if we are dealing with entites get the entities name
+            name = jsonData[type][recipientID]["Name"];
+          } else { // any other type pull first and last name
+            if (jsonData[type][recipientID]["LetterName"]) {
+              name = jsonData[type][recipientID]["LetterName"];
+            } else {
+              name = jsonData[type][recipientID]["FirstName"] + " " + jsonData[type][recipientID]["LastName"];
+            }
+          }
+          setBodyRecipient(name);
+
+        }
+      }
+    } else { // remove member email from list
+      if (ccInput != "") { // if the email list exists
+        ccList = ccInput.split(',');
+        index = ccList.indexOf(recipientEmail);
+        if (index != -1) { // if the email exists in the list, remove it
+          ccList.splice(index, 1);
+          newCCStr = ccList.join(",");
+        }
+      }// else do nothing as there are no emails to remove
+    }
+    // update the input list
+    document.getElementById(divID).value = newCCStr;
+  }
+
+  /**
+   * hide and show suggested recipients for emails
+   * 
+   * @param {string} direction: the direction dropdown is currently in (up or down)
+   * @param {string} div: the div ID of the dropdown we want to toggle
+   */
+  function toggleMemberDropdown(direction, div) {
+    var divID = "taskEmail" + div + "OuterDiv";
+    var dir1, dir2, disp;
+    if (direction == "down") { // we want to show the dropdown
+      dir1 = "Up";
+      dir2 = "Down";
+      disp = "block";
+    } else {
+      dir1 = "Down";
+      dir2 = "Up";
+      disp = "none"
+    }
+    var showButtonID = "taskEmail" + div + dir1 + "Btn"
+    var hideButtonID = "taskEmail" + div + dir2 + "Btn"
+    document.getElementById(divID).style.display = disp;
+    document.getElementById(showButtonID).style.display = "block";
+    document.getElementById(hideButtonID).style.display = "none";
+  }
+
+</script>

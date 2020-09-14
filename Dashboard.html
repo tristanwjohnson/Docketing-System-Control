@@ -1,0 +1,284 @@
+<script>
+  const jsonData = <?!= JSON.stringify(jsonData) ?>;
+  console.log(jsonData);
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <?!= HtmlService.createHtmlOutputFromFile('Header').getContent(); ?>
+
+</head>
+
+<body class="application application-offset bg-light" style="text-align: center">
+
+  <!------------------------------------------------------HTML GOES BELOW----------------------------------------------------------------------->
+
+  <!--------------------------------------- NavBar --------------------------------------------->
+  <?!= HtmlService.createHtmlOutputFromFile('Navbar').getContent(); ?>
+  <!---------------------------------------  Rest of page below --------------------------------------------->
+
+
+
+
+  <div class="container-fluid">
+    <div class="row justify-content-md-center">
+      <div class="col-sm-3">
+        <!-----Left Column----->
+
+        <div>
+          <div class="card  border-0">
+            <div class="card-body" style="text-align:left">
+              <div class="row" style="text-align:center">
+                <div class="col">
+                  <h5 class="h4 ">Welcome, <?=jsonData.user.FirstName?>!</h5>
+                </div>
+              </div><br>
+              <div class="row">
+                <div class="col">
+                  <p>Unviewed Tasks</p>
+                </div>
+                <div class="col-3" style="text-align:right">
+                  <p id="unviewedTasks" class="text-info">14</p>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <p>Tasks Due This Week</p>
+                </div>
+                <div class="col-3" style="text-align:right">
+                  <p id="tasksDueThisWeek" class="text-warning">3</p>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <p>Overdue Tasks</p>
+                </div>
+                <div class="col-3" style="text-align:right">
+                  <p id="overdueTasks" class="text-danger">6</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row align-items-center justify-content-between text-center">
+          <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 align-items-center" style="margin: auto">
+            <?var url = getScriptUrl();?><a href="<?=url?>?page=Contacts"
+              class="main-menu-item btn btn-square text-sm  mx-auto" style="margin: .5rem">
+              <span class="btn-inner--icon d-block"><i class="fas fa-id-card"></i></span>
+              <span class="btn-inner--icon d-block pt-2">Contacts</span>
+            </a>
+          </div>
+          <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 align-items-center" style="margin: auto">
+            <?var url = getScriptUrl();?><a href="<?=url?>?page=Matters"
+              class="btn btn-square text-sm  mx-auto main-menu-item" style="margin: .5rem">
+              <span class="btn-inner--icon d-block"><i class="fas fa-gavel"></i></span>
+              <span class="btn-inner--icon d-block pt-2">Matters</span>
+            </a>
+          </div>
+          <!--div class="col-xs-12 col-sm-12 col-md-6 col-lg-4 align-items-center" style="margin: auto">
+            <a class="btn btn-square text-sm  mx-auto main-menu-item"
+              style="margin: .5rem" data-toggle="modal" data-target="#taskOptionModal">
+              <span class="btn-inner--icon d-block"><i class="fas fa-list"></i></span>
+              <span class="btn-inner--icon d-block pt-2">Tasks</span>
+            </a>
+          </div-->
+          <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 align-items-center" style="margin: auto">
+            <?var url = getScriptUrl();?><a href="<?=url?>?page=Team"
+              class="main-menu-item btn btn-square text-sm  mx-auto" style="margin: .5rem">
+              <span class="btn-inner--icon d-block"><i class="fas fa-users"></i></span>
+              <span class="btn-inner--icon d-block pt-2">Team</span>
+            </a>
+          </div>
+          <!--div class="col-xs-12 col-sm-12 col-md-6 col-lg-4 align-items-center" style="margin: auto">
+            <a href="../../application/user/card-listing.html" class="btn btn-square text-sm  mx-auto main-menu-item"
+              style="margin: .5rem">
+              <span class="btn-inner--icon d-block"><i class="fas fa-clock"></i></span>
+              <span class="btn-inner--icon d-block pt-2">Time</span>
+            </a>
+          </div-->
+          <div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 align-items-center" style="margin: auto">
+            <a class="btn btn-square text-sm  mx-auto main-menu-item" style="margin: .5rem" data-toggle="modal"
+              data-target="#generateClientReportModal" onclick="onOpenReportModal()">
+              <span class="btn-inner--icon d-block"><i class="fas fa-file"></i></span>
+              <span class="btn-inner--icon d-block pt-2">Reports</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
+      <div class="col-sm-9">
+        <!-----Middle Column----->
+
+        <div>
+          <div class="card border-0">
+            <div class="card-body">
+              <div class="card-header" style="display:flex; border-bottom:0; padding-top:0.5rem;">
+                <div class="container">
+                  <div class="row">
+                    <div class="col-4" style="text-align:left">
+                      <button id="addTaskTypeBtn" type="button" class="btn btn-icon btn-sm btn-outline-primary"
+                        data-toggle="modal" data-target="#addNewTaskTypeModal">
+                        <span class="btn-inner--icon"><i class="fas fa-plus"></i></span>
+                        <span class="btn-inner--text">Create Type</span>
+                      </button>
+                    </div>
+                    <div class="col-4">
+                      <h4 class="card-title mb-0 ">Task View</h4>
+                    </div>
+                    <div class="col-4" style="text-align:right">
+                      <button type="button" class="btn btn-icon btn-sm btn-outline-primary" data-toggle="modal"
+                        data-target="#modal-add-edit-task" onclick="onOpenAddEditTaskModal('add')">
+                        <span class="btn-inner--icon"><i class="fas fa-plus"></i></span>
+                        <span class="btn-inner--text">New Task</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col">
+                  <div class="card" style="box-shadow: 0 0 0.5rem 0 rgba(13, 35, 62, 0.11);">
+                    <div class="card-header">
+                      <div class="row">
+                        <div class="col" style="text-align:left">
+                          <button type="button" class="btn btn-icon-only btn-xs btn-outline-primary"
+                            onclick="toggleTaskSearch('Assigned')">
+                            <span class="btn-inner--icon"><i class="fas fa-search"></i></span>
+                          </button>
+                        </div>
+                        <div class="col">
+                          <h5 class="card-title mb-0 ">Tasks Assigned To You</h5>
+                        </div>
+                        <div class="col" style="text-align:right">
+                          <select class="custom-select custom-select-sm" style="border:0.5; width:60%"
+                            id="assignedTasksViewDropdown" onchange="populateAssignedTasks()">
+                            <option value="active">Active Tasks</option>
+                            <option value="completed">Completed Tasks</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row align-items-center" id="taskAssignedSearchBar" style="margin:0; display:none">
+                      <div class="form-group mb-0">
+                        <div class="input-group input-group-merge input-group-sm">
+                          <div class="input-group-prepend">
+                            <select class="custom-select custom-select-sm" style="border:0.5" id="AssignedSearchBy"
+                              onchange="resetSearch('Assigned')">
+                              <option value="title">Title</option>
+                              <option value="type">Type</option>
+                              <option value="responsible">Responsible</option>
+                            </select>
+                          </div>
+                          <input type="text" class="form-control pl-2" style="border:0.5" id="taskAssignedSearchValue"
+                            placeholder="  Search Here">
+                          <div class="input-group-append">
+                            <span class="input-group-btn">
+                              <button type="button" class="btn btn-sm  " style="border:0.5"
+                                onclick="searchTaskAssigned()">
+                                <i class="fas fa-search"></i>
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="card-body  " style="padding:0">
+                      <div id="memberAssignedTaskListDiv" style="padding:0; height: 15rem; overflow: auto">
+                        <ul class="list-group">
+                          <li class="list-group-item hoverable ">NO TASKS ASSIGNED</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col">
+                  <div class="card" style="box-shadow: 0 0 0.5rem 0 rgba(13, 35, 62, 0.11);">
+                    <div class="card-header">
+                      <div class="row">
+                        <div class="col" style="text-align:left">
+                          <button type="button" class="btn btn-icon-only btn-xs btn-outline-primary"
+                            onclick="toggleTaskSearch('Responsible')">
+                            <span class="btn-inner--icon"><i class="fas fa-search"></i></span>
+                          </button>
+                        </div>
+                        <div class="col">
+                          <h5 class="card-title mb-0 ">Tasks You're Responsible For</h5>
+                        </div>
+                        <div class="col" style="text-align:right">
+                          <select class="custom-select custom-select-sm" style="border:0.5; width:60%"
+                            id="responsibleTasksViewDropdown" onchange="populateResponsibleTasks()">
+                            <option value="active">Active Tasks</option>
+                            <option value="completed">Completed Tasks</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="row align-items-center" id="taskResponsibleSearchBar" style="margin:0; display:none">
+                      <div class="form-group mb-0">
+                        <div class="input-group input-group-merge input-group-sm">
+                          <div class="input-group-prepend">
+                            <select class="custom-select custom-select-sm" style="border:0.5" id="ResponsibleSearchBy"
+                              onchange="resetSearch('Responsible')">
+                              <option value="title">Title</option>
+                              <option value="type">Type</option>
+                              <option value="assigned">Assigned</option>
+                            </select>
+                          </div>
+                          <input type="text" class="form-control pl-2" style="border:0.5"
+                            id="taskResponsibleSearchValue" placeholder="  Search Here">
+                          <div class="input-group-append">
+                            <span class="input-group-btn">
+                              <button type="button" class="btn btn-sm  " style="border:0.5"
+                                onclick="searchTaskResponsible()">
+                                <i class="fas fa-search"></i>
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card-body  " style="padding:0">
+                      <div id="memberResponsibleTaskListDiv" style="padding:0; height: 15rem; overflow: auto">
+                        <ul class="list-group">
+                          <li class="list-group-item hoverable ">NO RESPONSIBLE TASKS TASKS ASSIGNED</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!--------------------------------------------------------------------- Modals -------------------------------------------------------------------------------------->
+
+  <?!= HtmlService.createHtmlOutputFromFile('Task-Modals').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Report-Modal').getContent(); ?>
+
+  <!---------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+  <?!= HtmlService.createHtmlOutputFromFile('Footer').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('DashboardJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('MattersJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('TaskJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('ReportJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('NavbarJS').getContent(); ?>
+
+</body>
+
+</html>

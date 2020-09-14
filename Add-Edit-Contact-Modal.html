@@ -1,0 +1,444 @@
+<!----------------------------------------- Add/Edit Contact Modal ---------------------------------------------->
+<div class="modal fade" id="modal-add-contact" tabindex="-1" role="dialog" aria-labelledby="modal-add-contact"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content  " onclick="hideContactSuccessMessages()">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+
+            <div class="col-3">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-id-card" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="modalTitle">
+                  <h6 class="mb-0 ">Add Contact</h6>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-6">
+              <div id="contactRadioButtonDiv">
+                <button class="btn bg-light  btn-icon" id="personRadio" onclick="toggleContactType('person')">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-user"></i>
+                  </span>
+                  <span class="btn-inner--text">
+                    Person
+                  </span>
+                </button>
+                <button class="btn bg-light  btn-icon" id="entityRadio" onclick="toggleContactType('entity')">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-building"></i>
+                  </span>
+                  <span class="btn-inner--text">
+                    Entity
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <!----------------------- Add Person Div ---------------------->
+        <div id="addPersonDiv" style="display: none">
+          <!-- person form -->
+          <form>
+            <h5 class=" mt-3" style="text-align:left">Name</h5>
+            <div class="form-row">
+              <div class="col-md-4 mb-3">
+                <label for="personFirstName">First Name</label>
+                <input type="text" class="form-control" id="personFirstName" placeholder="First Name">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="personMiddleName">Middle Name</label>
+                <input type="text" class="form-control" id="personMiddleName" placeholder="Middle Name">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="personLastName">Last Name</label>
+                <input type="text" class="form-control" id="personLastName" placeholder="Last Name">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="personLetterName">Letter Name</label>
+                <input type="text" class="form-control" id="personLetterName" placeholder="Letter Name">
+              </div>
+            </div>
+            <br>
+            <h5 class=" mt-3" style="text-align:left">Contact Information</h5>
+            <div class="form-row">
+              <div class="col-md-4 mb-3">
+                <label for="personEmail">Email</label>
+                <input type="text" class="form-control" id="personEmail" placeholder="Email">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="personWorkPhone">Work Phone</label>
+                <input type="text" class="form-control" id="personWorkPhone" placeholder="Work Phone">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="personPersonalPhone">Personal Phone</label>
+                <input type="text" class="form-control" id="personPersonalPhone" placeholder="Personal Phone">
+              </div>
+            </div>
+            <br>
+            <h5 class=" mt-3" style="text-align:left">Address</h5>
+            <div class="form-row">
+              <div class="col-md-6 mb-3">
+                <label for="personAddress">Street Address</label>
+                <input type="text" class="form-control" id="personAddress" placeholder="Street Address">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="personCity">City</label>
+                <input type="text" class="form-control" id="personCity" placeholder="City">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="personState">State</label>
+                <input type="text" class="form-control" id="personState" placeholder="State">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="personZip">Zip</label>
+                <input type="text" class="form-control" id="personZip" placeholder="Zip">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="personCountry">Country</label>
+                <input type="text" class="form-control" id="personCountry" placeholder="Country">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col" style="text-align:left">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="personMailingCheck"
+                    onclick="togglePersonMailingAddressDiv()">
+                  <label class="form-check-label" for="personMailingCheck">
+                    This person has a different mailing address.
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-row" id="personMailingAddressDiv" style="display:none">
+              <br>
+              <h5 class=" mt-3" style="text-align:left">Mailing Address</h5>
+              <div class="form-row">
+                <div class="col-md-6 mb-3">
+                  <label for="personMailingAddress">Street Address</label>
+                  <input type="text" class="form-control" id="personMailingAddress" placeholder="Street Address">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="personMailingCity">City</label>
+                  <input type="text" class="form-control" id="personMailingCity" placeholder="City">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label for="personMailingState">State</label>
+                  <input type="text" class="form-control" id="personMailingState" placeholder="State">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label for="personMailingZip">Zip</label>
+                  <input type="text" class="form-control" id="personMailingZip" placeholder="Zip">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="personMailingCountry">Country</label>
+                  <input type="text" class="form-control" id="personMailingCountry" placeholder="Country">
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <!----------------------- Add Entity Div ---------------------->
+        <div id="addEntityDiv" style="display: none">
+          <!-- entity form -->
+          <form>
+            <h5 class=" mt-3" style="text-align:left">Entity Information</h5>
+            <div class="form-row">
+              <div class="col-md-4 mb-3">
+                <label for="entityName">Entity Name</label>
+                <input type="text" class="form-control" id="entityName" placeholder="Entity Name">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="entityType">Type</label>
+                <select class="custom-select" id="entityType">
+                  <option value="Not Specified">Select a Type</option>
+                  <option value="Corporation">Corporation</option>
+                  <option value="Limited Liability Company">Limited Liability Company</option>
+                  <option value="Partnership">Partnership</option>
+                  <option value="Limited Partnership">Limited Partnership</option>
+                  <option value="Joint Venture">Joint Venture</option>
+                  <option value="Sole Proprietorship">Sole Proprietorship</option>
+                  <option value="Trust">Trust</option>
+                  <option value="Estate">Estate</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="entityStateOfIncorporation">State of Incorporation</label>
+                <input type="text" class="form-control" id="entityStateOfIncorporation"
+                  placeholder="State of Incorporation">
+              </div>
+            </div>
+            <br>
+            <h5 class=" mt-3" style="text-align:left">Contact Information</h5>
+            <div class="form-row">
+              <div class="col-md-4 mb-3">
+                <label for="entityEmail">Email</label>
+                <input type="text" class="form-control" id="entityEmail" placeholder="Email">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="entityPhone">Phone</label>
+                <input type="text" class="form-control" id="entityPhone" placeholder="Phone">
+              </div>
+            </div>
+            <br>
+            <h5 class=" mt-3" style="text-align:left">Associated People</h5>
+            <div class="form-row">
+              <div class="col-md-6 mb-3">
+                <div id="associatedPeopleListID">
+                  <label for="entityType">Associated People</label>
+                  <p id="associatedPeoplePID">No Associated People</p>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <!-- Button trigger modal -->
+                <button type="button" id="manageAssociatedBtnID" class="btn btn-primary"
+                  onclick="toggleEntityPeopleKanban()">
+                  Manage Associated People
+                </button>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col mb-3">
+                <div class="row justify-content-md-center" style="display: none;" id="managePeopleKanbanOuterDiv">
+                  <div class="card overflow-hidden ">
+                    <div class="container-kanban " style="align-content:center">
+                      <div class="kanban-board" data-toggle="dragula"
+                        data-containers="[&quot;kanbanAssigned&quot;, &quot;kanbanUnassigned&quot;]">
+                        <div class="kanban-col px-0 bg-light">
+                          <div class="card-list card-list-flush bg-light">
+                            <div class="card-list-title row align-items-center mb-3">
+                              <div class="row align-items-center" style="margin:0.5rem">
+                                <div class="col-1"></div>
+                                <div class="col">
+                                  <h6 class="mb-0 ">Associated with Entity</h6>
+                                </div>
+                                <div class="col-1">
+                                  <div class="btn-xs btn-icon-only"></div>
+                                  <!--This btn ensures that the two columns are vertically aligned with one another, no other purpose-->
+                                </div>
+                              </div>
+                            </div>
+                            <div class="card-list-body" id="kanbanAssigned"
+                              style="padding:0; height: 15rem; overflow: auto">
+                              <span class="empty-container" data-placeholder="Empty"></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="kanban-col px-0 bg-light">
+                          <div class="card-list card-list-flush bg-light">
+
+                            <div class="card-list-title align-items-center mb-3">
+
+                              <div class="row align-items-center" style="margin:0.5rem">
+                                <div class="col1"></div>
+                                <div class="col">
+                                  <h6 class="mb-0 ">Not Associated with Entity</h6>
+                                </div>
+                                <div class="col1">
+                                  <button type="button" class="btn btn-xs bg-light  rounded-circle btn-icon-only"
+                                    onclick="toggleSearchEntityPeopleKanban()">
+                                    <span class="btn-inner--icon">
+                                      <i class="fas fa-search"></i>
+                                    </span>
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div class="row align-items-center" id="entityAssociatedPeopleSearchBar"
+                                style="display:none; margin:auto">
+                                <div class="form-group">
+                                  <div class="input-group input-group-merge input-group-sm">
+                                    <input type="text" class="form-control" id="entityAssociatedPeopleSearchValue"
+                                      placeholder="Search">
+                                    <div class="input-group-append">
+                                      <span class="input-group-btn">
+                                        <button type="button" class="btn btn-sm bg-white"
+                                          onclick="searchEntityPeopleKanban()"><i class="fas fa-search"></i></button>
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                            </div>
+                            <div class="card-list-body" id="kanbanUnassigned"
+                              style="padding:0; height: 15rem; overflow: auto">
+                              <span class="empty-container" data-placeholder="Empty"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <br>
+            <h5 class=" mt-3" style="text-align:left">Address</h5>
+            <div class="form-row">
+              <div class="col-md-6 mb-3">
+                <label for="entityAddress">Street Address</label>
+                <input type="text" class="form-control" id="entityAddress" placeholder="Street Address">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="entityCity">City</label>
+                <input type="text" class="form-control" id="entityCity" placeholder="City">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="entityState">State</label>
+                <input type="text" class="form-control" id="entityState" placeholder="State">
+              </div>
+              <div class="col-md-3 mb-3">
+                <label for="entityZip">Zip</label>
+                <input type="text" class="form-control" id="entityZip" placeholder="Zip">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="entityCountry">Country</label>
+                <input type="text" class="form-control" id="entityCountry" placeholder="Country">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col" style="text-align:left">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="entityMailingCheck"
+                    onclick="toggleEntityMailingAddressDiv()">
+                  <label class="form-check-label" for="entityMailingCheck">
+                    This entity has a different mailing address.
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="form-row" id="entityMailingAddressDiv" style="display:none">
+              <br>
+              <h5 class=" mt-3" style="text-align:left">Mailing Address</h5>
+              <div class="form-row">
+                <div class="col-md-6 mb-3">
+                  <label for="entityMailingAddress">Street Address</label>
+                  <input type="text" class="form-control" id="entityMailingAddress" placeholder="Street Address">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="entityMailingCity">City</label>
+                  <input type="text" class="form-control" id="entityMailingCity" placeholder="City">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label for="entityMailingState">State</label>
+                  <input type="text" class="form-control" id="entityMailingState" placeholder="State">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label for="entityMailingZip">Zip</label>
+                  <input type="text" class="form-control" id="entityMailingZip" placeholder="Zip">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="entityMailingCountry">Country</label>
+                  <input type="text" class="form-control" id="entityMailingCountry" placeholder="Country">
+                </div>
+              </div>
+            </div>
+          </form>
+
+        </div>
+      </div>
+      <!-- Footer -->
+      <div class="modal-footer" style="margin:0">
+        <div class="container">
+          <div class="row">
+            <div class="col"></div>
+
+            <div class="col" style="text-align:center">
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addPersonBtnID"
+                style="display:none; margin:auto" onclick="addPerson()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-user-plus"></i>
+                </span>
+                <span class="btn-inner--text">Add Person</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addPersonBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Adding Person</span>
+              </button>
+
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addEntityBtnID"
+                style="display:none; margin:auto" onclick="addEntity()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-building"></i>
+                </span>
+                <span class="btn-inner--text">Add Entity</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addEntityBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Adding Entity</span>
+              </button>
+
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editPersonBtnID"
+                style="display:none; margin:auto" onclick="editPerson()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </span>
+                <span class="btn-inner--text">Edit Person</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editPersonBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Editing Person</span>
+              </button>
+
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editEntityBtnID"
+                style="display:none; margin:auto" onclick="editEntity()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </span>
+                <span class="btn-inner--text">Edit Entity</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editEntityBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Editing Entity</span>
+              </button>
+            </div>
+
+            <div class="col">
+              <p id="addedPersonSuccessMessage" style="display:none" class="text-success">Person Added Successfully.
+              </p>
+              <p id="addedEntitySuccessMessage" style="display:none" class="text-success">Entity Added Successfully.
+              </p>
+              <p id="editedPersonSuccessMessage" style="display:none" class="text-success">Person Edited Successfully.
+              </p>
+              <p id="editedEntitySuccessMessage" style="display:none" class="text-success">Entity Edited Successfully.
+              </p>
+              <p id="addedContactInvalidFieldsMessage" style="display:none" class="text-danger">Please Fill Out All
+                Required Fields.</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

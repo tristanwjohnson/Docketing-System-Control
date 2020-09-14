@@ -1,0 +1,1169 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+  $(function () {
+    //on load if passed in 
+    var initClientID = jsonData.initParams["initialClientID"];
+    if (initClientID) {
+      showClients();
+      showClientInfo(initClientID);
+    }
+  });
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------------   CLIENT TAB SELECTED   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  /**
+   * Show Client Div and populate list of clients from jsonData
+   */
+  function showClients() {
+    // handle the style
+    hideNavSelections();
+    document.getElementById("clientDivID").style.display = "block";
+    document.getElementById("activeClientListID").style.display = "block";
+    document.getElementById("clientNav").className = "btn bg-light-dark";
+    document.getElementById("proposeClientNav").style.display = "inline-block";
+    // show the actual client list
+    var activeList = Object.values(jsonData.clients).filter(function (c) { return c["Status"] == "Active" }); // filter this list so it only shows active clients
+    var clientList = activeList.sort(function (d1, d2) { return d1["ClientName"].localeCompare(d2["ClientName"]); }); // list of active clients sorted alphabetically by ClientName
+    // populate client string with HTML to show list of clients
+    var clientString = "";
+    var listOption;
+    for (var i = 0; i < clientList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + clientList[i].ID + ' style="text-align:left" onclick = "showClientInfo(\'' + clientList[i].ID + '\')">' + clientList[i].ClientName + '</li>';
+      clientString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='clientListDiv']").find('li').remove().end().append($(clientString));
+  }
+
+  // ------------------------------------------------------------------- Search Clients ---------------------------------------------------------------------
+
+
+  /**
+   * Toggle search bar to search list of a client list
+   *
+   * @param {string} type: the type of the client list we are toggling the search bar for - active or inReview
+   */
+  function toggleClientSearch(type) {
+    var searchBar = document.getElementById(type + "ListSearchBar");
+    //clear search value
+    document.getElementById(type + "ListSearchValue").value = null;
+    // toggle whether or not the search bar is visible
+    if (searchBar.style.display == "none") { //searchBar is hidden
+      searchBar.style.display = "inline";
+    } else { //searchBar is shown
+      searchBar.style.display = "none";
+      // reset lists
+      if (type == "active") {
+        showClients();
+      } else { // type == "inReview"
+        showInReview();
+      }
+    }
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the active client list with only clients whose names or docket code include the term
+   */
+  function searchActiveList() {
+    // hide selected card
+    document.getElementById("selectedClientCardID").style.display = "none";
+    document.getElementById("selectedPersonCardID").style.display = "none";
+    document.getElementById("selectedEntityCardID").style.display = "none";
+    // Get the search term
+    var searchTerm = document.getElementById("activeListSearchValue").value;
+    // Get the people from JSON
+    var activeList = Object.values(jsonData.clients).filter(function (c) { return c["Status"] == "Active" });
+    var refinedList = [];
+    // Iterate through the clients and refine the list to clients whose names or docket codes include the search term
+    var client;
+    for (var i = 0; i < activeList.length; i++) {
+      client = activeList[i];
+      // only add this client to the refined list if their name or docket code includes the search term
+      if (client["ClientName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(client);
+      } else if (client["DocketCode"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(client);
+      }
+    }
+    // Alphabetize the search results
+    refinedList.sort(function (c1, c2) { return c1["ClientName"].localeCompare(c2["ClientName"]) });
+    // populate client string with HTML to show list of clients
+    var clientString = "";
+    var listOption;
+    for (var i = 0; i < refinedList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + refinedList[i].ID + ' style="text-align:left" onclick = "showClientInfo(\'' + refinedList[i].ID + '\')">' + refinedList[i].ClientName + '</li>';
+      clientString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='clientListDiv']").find('li').remove().end().append($(clientString));
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the in review client list with only clients whose names or docket code include the term
+   */
+  function searchInReviewList() {
+    // hide selected card
+    document.getElementById("selectedClientCardID").style.display = "none";
+    document.getElementById("selectedPersonCardID").style.display = "none";
+    document.getElementById("selectedEntityCardID").style.display = "none";
+    // Get the search term
+    var searchTerm = document.getElementById("inReviewListSearchValue").value;
+    // Get the people from JSON
+    var inReviewList = Object.values(jsonData.clients).filter(function (c) { return c["Status"] == "In Review" });
+    var refinedList = [];
+    // Iterate through the clients and refine the list to clients whose names or docket codes include the search term
+    var client;
+    for (var i = 0; i < inReviewList.length; i++) {
+      client = inReviewList[i];
+      // only add this client to the refined list if their name or docket code includes the search term
+      if (client["ClientName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(client);
+      } else if (client["DocketCode"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(client);
+      }
+    }
+    // Alphabetize the search results
+    refinedList.sort(function (c1, c2) { return c1["ClientName"].localeCompare(c2["ClientName"]) });
+    // populate client string with HTML to show list of clients
+    var clientString = "";
+    var listOption;
+    for (var i = 0; i < refinedList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + refinedList[i].ID + ' style="text-align:left" onclick = "showClientInfo(\'' + refinedList[i].ID + '\')">' + refinedList[i].ClientName + '</li>';
+      clientString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='inReviewListDiv']").find('li').remove().end().append($(clientString));
+  }
+
+
+  // ---------------------------------------------------------------- Show/Hide client Info ------------------------------------------------------------------
+
+  /**
+   * Show specific client information
+   *
+   * @param {string} clientID: the id of the client we wish to show the information of
+   */
+  function showClientInfo(clientID) {
+    // show client as selected in the client list and unselect the previous client
+    var prevSelectedID = document.getElementById("selectedClientID").value;
+    if (prevSelectedID) {
+      var selectedElem = document.getElementById(prevSelectedID);
+      if (selectedElem) {
+        selectedElem.className = "list-group-item hoverable";
+      }
+    }
+    document.getElementById(clientID).className = "list-group-item hoverable bg-light-dark text-dark";
+
+    // get client from JSON
+    var client = jsonData.clients[clientID];
+
+    // set the hidden tag to store the client ID
+    document.getElementById("selectedClientID").value = clientID;
+    document.getElementById("associatedNoteType").value = "client";
+
+    // hide the undo success alert
+    document.getElementById("undoDeletedClientAlert").style.display = "none";
+
+    // update button display based on privileges
+    updateClientCardPrivileges(client["CreatedBy"], client["Status"]);
+
+    // set Title of the card to be 'ClientName - DocketCode'
+    var titleStr = '<h5 class="card-title mb-0 ">' + client.ClientName + " - " + client.DocketCode + '    <a target="_blank" href="https://drive.google.com/drive/folders/' + client.FolderID + '"><i class="fab fa-google-drive"></i></a></h5>';
+    $("div[id='clientTitleDiv']").find('h5').remove().end().append($(titleStr));
+
+    // Set the status, LSA, and retainer fields
+    // status
+    document.getElementById("statusP").innerHTML = "Status: <b>" + client["Status"] + "</b>";
+    // lsa
+    var lsaString;
+    if (client["SignedLSA"]) {
+      lsaString = "Signed";
+    } else {
+      lsaString = "Unsigned";
+    }
+    document.getElementById("LSAP").innerHTML = "LSA: <b>" + lsaString + "</b>";
+    // retainer
+    var retainerString;
+    if (client["RetainerPaid"]) {
+      retainerString = "Paid";
+    } else {
+      retainerString = "Unpaid";
+    }
+    document.getElementById("retainerP").innerHTML = "Retainer: <b>" + retainerString + "</b>";
+
+    // Show the entity(s) -- "clientEntityDivID"
+    var entities = client.EntityID;
+    var entityHTML = "";
+    if (entities) { // if this client has entities
+      entities = entities.split(","); // a list of all of the associated entities ids
+      var curEntity;
+      // fill in data for each entity
+      for (var i = 0; i < entities.length; i++) {
+        curEntity = jsonData.entities[entities[i]]; // the current entity
+        // add this entities contact info to the html string
+        entityHTML += "<div style='text-align:left'><a target='_blank' href='https://drive.google.com/drive/folders/" + curEntity["FolderID"] + "'><b>" + curEntity["Name"] + "</b></a></div><div style='text-align:left'>Phone: " + (curEntity["Phone"] || "") + "</div> <div style='text-align:left'>Email: " + (curEntity["Email"] || "") + "</div><br>";
+      }
+    }
+    // update the entity html on the page
+    document.getElementById("clientEntityDivID").innerHTML = entityHTML;
+    // Show the person(s) -- "clientPersonDivID"
+    var persons = client.PersonID;
+    var personHTML = "";
+    if (persons) {
+      persons = persons.split(","); // a list of all of the associated persons ids
+      var curPerson;
+      // fill in data for each person
+      for (var i = 0; i < persons.length; i++) {
+        curPerson = jsonData.persons[persons[i]]; // the current person
+        // add this person's contact info to the html string
+        personHTML += "<div style='text-align:left'><a target='_blank' href='https://drive.google.com/drive/folders/" + curPerson["FolderID"] + "'><b>" + curPerson["FirstName"] + " " + curPerson["LastName"] + "</b></a></div>  <div style='text-align:left'>Work Phone: " + (curPerson["WorkPhone"] || "") + "</div>  <div style='text-align:left'>Personal Phone: " + (curPerson["PersonalPhone"] || "") + "</div>  <div style='text-align:left'>Email: " + (curPerson["Email"] || "") + "</div><br>";
+      }
+    }
+    // Show a message if there are no people or entities associated
+    if (!persons && !entities) {
+      personHTML = '<p><b>No Person/Entity Associated<b></p>';
+    }
+    // updated the person html on the page
+    document.getElementById("clientPersonDivID").innerHTML = personHTML;
+
+    // show client matters
+    var matterStr = getMatterStr(client.MatterID);
+    $("div[id='clientMatterListDiv']").find('li').remove().end().append($(matterStr));
+
+    // show client notes 
+    var notesStr = getNoteStr(client.NoteID);
+    $("div[id='clientNoteListDiv']").find('li').remove().end().append($(notesStr));
+
+    // get creation information (createdBy, dateCreated, etc)
+    var creatorStr = "<p style = 'margin:0; font-size:0.7rem'> Created By: <b>" + client.CreatedBy + "</b></p><p style = 'margin:0; font-size:0.7rem'>Last Modified By: <b>" + client.ModifiedBy + "</b></p>";
+
+    var created = new Date(client.DateCreated);
+    var modified = new Date(client.DateModified);
+    var dateCreated = created.toDateString();
+    var lastModified = modified.toDateString();
+
+    var dateStr = "<p style = 'margin:0; font-size:0.7rem'> Date Created: <b>" + dateCreated + "</b></p> <p style = 'margin:0; font-size:0.7rem'>Last Modified: <b>" + lastModified + "</b></p>";
+
+    // add this creation info to the HTML
+    $("div[id='createdByDivClient']").find('p').remove().end().append($(creatorStr));
+    $("div[id='dateCreatedDivClient']").find('p').remove().end().append($(dateStr));
+
+    // actually show the selected client div
+    document.getElementById("selectedClientCardID").style.display = "block";
+  }
+
+  /**
+   * Function to hide the client info window
+   */
+  function hideClientInfo() {
+    // hide the (previously) selected client
+    document.getElementById("selectedClientCardID").style.display = "none";
+
+    // unselect the client
+    var selectedID = document.getElementById("selectedClientID").value;
+    document.getElementById(selectedID).className = "list-group-item hoverable ";
+  }
+
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------   INREVIEW TAB SELECTED   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  /**
+   * Show In Review Div and populate list of clients in review from jsonData
+   */
+  function showInReview() {
+    // handle the style
+    hideNavSelections();
+    document.getElementById("clientDivID").style.display = "block";
+    document.getElementById("inReviewClientListID").style.display = "block";
+    document.getElementById("inReviewNav").className = "btn bg-light-dark";
+    document.getElementById("proposeClientNav").style.display = "inline-block";
+    // show the actual client list
+    var inReviewList = Object.values(jsonData.clients).filter(function (c) { return c["Status"] == "In Review" });
+    var sortedList = inReviewList.sort(function (d1, d2) { return d1["ClientName"].localeCompare(d2["ClientName"]); }); // list of clients sorted alphabetically by ClientName
+    // populate client string with HTML to show list of clients
+    var clientString = "";
+    var listOption;
+    for (var i = 0; i < sortedList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id=' + sortedList[i].ID + ' style="text-align:left" onclick = "showClientInfo(\'' + sortedList[i].ID + '\')">' + sortedList[i].ClientName + '</li>';
+      clientString += listOption;
+    }
+    //append list options in HTML dynamically with Jquery
+    $("div[id='inReviewListDiv']").find('li').remove().end().append($(clientString));
+  }
+
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------   OPENING PROPOSE/EDIT MODAL   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  /**
+   * Function called when add/edit client modal is opened.
+   * Sets up modal for edit or add depending on input
+   *
+   * @param {string} typeStr: string representing the state from which the modal is being opened (add a client vs edit a client)
+   */
+  function onOpenClientModal(typeStr) {
+    // clear the fields in the modal
+    clearClientFields();
+    // hide error messages and set form inputs to valid
+    document.getElementById("proposeClientNullFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientUniqueFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientInvalidLengthFieldsMessage").style.display = "none";
+    document.getElementById("clientDocketCode").className = "form-control";
+    if (typeStr == "add") { // we are adding a new client
+      // unselect current client and set selected client hidden tag to null
+      var prevSelectedID = document.getElementById("selectedClientID").value;
+      if (prevSelectedID) {
+        document.getElementById(prevSelectedID).className = "list-group-item  hoverable";
+      }
+      document.getElementById("selectedClientID").value = null;
+      document.getElementById("associatedNoteType").value = null;
+      document.getElementById("selectedClientCardID").style.display = "none";
+      // disable status, LSA, and retainer fields - NO ONE can set these when proposing a client
+      document.getElementById("clientStatus").disabled = true;
+      document.getElementById("clientLSASigned").disabled = true;
+      document.getElementById("clientRetainerPaid").disabled = true;
+      // enable the docket code field
+      document.getElementById("clientDocketCode").disabled = null;
+      // populate people and entity kanbans with no associations
+      populateClientPeopleKanban([]);
+      populateClientEntityKanban([]);
+      // set the modal title to propose client
+      document.getElementById("clientModalTitle").innerHTML = '<h6 class="mb-0 ">Propose Client</h6>';
+      // show the propose client button (and hide the edit button)
+      document.getElementById("editClientBtnID").style.display = "none";
+      document.getElementById("proposeClientBtnID").style.display = "block";
+    } else if (typeStr == "edit") { // we are editing an existing client
+      // get the selected clientID and client
+      var clientID = document.getElementById("selectedClientID").value;
+      var client = jsonData.clients[clientID];
+      // populate form values with current client information
+      // fill in the docket code and client name
+      document.getElementById("clientDocketCode").value = client["DocketCode"];
+      document.getElementById("clientName").value = client["ClientName"];
+      // enable buttons based on user privileges
+      updateClientModalPrivileges();
+      // fill in the status fields
+      document.getElementById("clientStatus").value = client["Status"];
+      document.getElementById("clientLSASigned").checked = client["SignedLSA"];
+      document.getElementById("clientRetainerPaid").checked = client["RetainerPaid"];
+      // disable the docket code field
+      document.getElementById("clientDocketCode").disabled = "true";
+      // populate the person kanban with associated people
+      var persons = client["PersonID"];
+      if (persons) {
+        populateClientPeopleKanban(persons.split(","));
+      } else {
+        populateClientPeopleKanban([]);
+      }
+      // populate the entity kanban with associated entities
+      var entities = client["EntityID"];
+      if (entities) {
+        populateClientEntityKanban(entities.split(","));
+      } else {
+        populateClientEntityKanban([]);
+      }
+      // toggle the kanbans so that they are initially open for editting
+      toggleClientPeopleKanban();
+      toggleClientEntitiesKanban();
+      // set the modal title to edit client
+      document.getElementById("clientModalTitle").innerHTML = '<h6 class="mb-0 ">Edit Client</h6>';
+      // show the edit client button (and hide the propose button)
+      document.getElementById("proposeClientBtnID").style.display = "none";
+      document.getElementById("editClientBtnID").style.display = "block";
+    }
+  }
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------------------   PROPOSING A CLIENT   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+  /**
+   * Function to propose a client within the database.
+   */
+  function proposeClient() {
+    // hide the loading button and show the propose client button
+    document.getElementById("proposeClientBtnID").style.display = "none";
+    document.getElementById("proposeClientBtnIDLoading").style.display = "block";
+    // Get the client info from the html
+    var infoList = getClientInformation();
+    // Hide all of the error messages
+    document.getElementById("proposeClientNullFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientUniqueFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientInvalidLengthFieldsMessage").style.display = "none";
+    // If the client info is returned as a string, then the user data was not valid, and the string returned is the id of the error message we wish to display
+    if (typeof (infoList) == "string") {
+      // hide the loading button and show the add person button
+      document.getElementById("proposeClientBtnIDLoading").style.display = "none";
+      document.getElementById("proposeClientBtnID").style.display = "block";
+      // show the correct error message
+      document.getElementById(infoList).style.display = "block";
+      // return so that nothing is done by the server
+      return;
+    }
+    var client = infoList[0];
+    // make a call to the server to propose the client
+    google.script.run.withSuccessHandler(onSuccessProposeClient).withFailureHandler(onFailProposeClient).proposeClient(client);
+  }
+
+  /**
+   * onSuccess function thats called after a client is successfully proposed
+   *
+   * @param {object} addedRows: a list of a single dictionary of the added row
+   */
+  function onSuccessProposeClient(addedRows) {
+    // update the json data
+    var client = addedRows[0];
+    jsonData.clients[client["ID"]] = client;
+    // update the clients list
+    showClients();
+    // clear the form values
+    clearClientFields();
+    // hide the loading button and show the add client button
+    document.getElementById("proposeClientBtnIDLoading").style.display = "none";
+    document.getElementById("proposeClientBtnID").style.display = "block";
+    // show a success alert
+    document.getElementById("proposeClientSuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFail function to be called when the server is unable to add a new person
+   */
+  function onFailProposeClient(err) {
+    // hide the loading button and show the propose client button
+    document.getElementById("proposeClientBtnIDLoading").style.display = "none";
+    document.getElementById("proposeClientBtnID").style.display = "block";
+    alert("There was an error while attempting to propose this client in the database. Please refresh this page. " + err);
+  }
+
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------   EDITING A CLIENT   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  /**
+   * Function to edit a client in the database
+   */
+  function editClient() {
+    // hide the loading button and show the add client button
+    document.getElementById("editClientBtnID").style.display = "none";
+    document.getElementById("editClientBtnIDLoading").style.display = "block";
+    // hide the error message
+    document.getElementById("proposeClientNullFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientUniqueFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientInvalidLengthFieldsMessage").style.display = "none";
+    // get the client information from the json
+    var infoList = getClientInformation();
+    // If the client info is returned as a string, then the user data was not valid, and the string returned is the id of the error message we wish to display
+    if (typeof (infoList) == "string") {
+      // hide the loading button and show the add client button
+      document.getElementById("editClientBtnIDLoading").style.display = "none";
+      document.getElementById("editClientBtnID").style.display = "block";
+      // show the error message
+      document.getElementById(infoList).style.display = "block";
+      return;
+    }
+    var client = infoList[0];
+    var clientID = document.getElementById("selectedClientID").value;
+    // pass ID of client being editied to new row entry
+    client["ID"] = clientID;
+    // Pass along the notes of the previous client
+    var noteID = jsonData.clients[clientID]["NoteID"];
+    if (!noteID) { // without this gs call fails immediately if noteID is undefined
+      noteID = "";
+    }
+    //pass along folderID 
+    client["FolderID"] = jsonData.clients[clientID]["FolderID"];
+    client["NoteID"] = noteID;
+    // call the server to store this information in the database
+    google.script.run.withSuccessHandler(onSuccessEditClient).withFailureHandler(onFailEditClient).editClient(client);
+  }
+
+  /**
+   * onSuccess function thats called after a client is successfully edited in the database.
+   *
+   * @param {object} retList: a list of dictionaries of the added rows [client]
+   */
+  function onSuccessEditClient(retList) {
+    // update the json data with new client information
+    var client = retList[0];
+    jsonData.clients[client["ID"]] = client;
+    // update the clients list
+    if (client["Status"] == "Active") {
+      showClients(); // if client is active update list in "clients" tab
+    } else {
+      showInReview(); // if client is in review update list in "in review "tab
+    }
+    // hide the loading button and show the edit entity button
+    document.getElementById("editClientBtnIDLoading").style.display = "none";
+    document.getElementById("editClientBtnID").style.display = "block";
+    // show a success alert
+    document.getElementById("editedClientSuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFail function to be called when the server is unable to edit a client
+   */
+  function onFailEditClient(err) {
+    // hide the loading button and show the add client button
+    document.getElementById("editClientBtnIDLoading").style.display = "none";
+    document.getElementById("editClientBtnID").style.display = "block";
+    // alert the user to the error
+    alert("Unable to edit this client in the database. Please refresh this page. " + err);
+  }
+
+
+  // ---------------------------------------------------- Accepting a client proposal ----------------------------------------------------
+
+  /**
+   * Function to accept a client proposal (edits client status)
+   */
+  function acceptClientProposal() {
+    // hide the accept button and show the loading button
+    document.getElementById("acceptClientProposalBtnID").style.display = "none";
+    document.getElementById("acceptClientProposalBtnIDLoading").style.display = "block";
+    // set the clients status to active
+    var clientID = document.getElementById("selectedClientID").value;
+    var client = jsonData.clients[clientID];
+    client["Status"] = "Active";
+    // call the server to make this update to the client in the database
+    google.script.run.withSuccessHandler(onSuccessAcceptClientProposal).withFailureHandler(onFailAcceptClientProposal).editClient(client);
+  }
+
+  /**
+   * onSuccess function to be called after a client proposal is accepted
+   * 
+   * @param {object} retList: a list of dictionaries of the added rows [client]
+   */
+  function onSuccessAcceptClientProposal(retList) {
+    var client = retList[0];
+    // Update the json data
+    jsonData.clients[client["ID"]] = client;
+    // update the ui and show the active clients
+    showClients();
+    // Hide the loading button (don't show accept client proposal again)
+    document.getElementById("acceptClientProposalBtnIDLoading").style.display = "none";
+  }
+
+  /**
+   * onFail function to be called after a client proposal is unable to be accepted
+   */
+  function onFailAcceptClientProposal(err) {
+    alert("Unable to approve this client proposal. Please refresh the page. " + err);
+    // Hide the loading button and show the accept client proposal button
+    document.getElementById("acceptClientProposalBtnIDLoading").style.display = "none";
+    document.getElementById("acceptClientProposalBtnID").style.display = "block";
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------   HELPER FUNCTIONS FOR PROPOSING AND EDITING A CLIENT   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  /**
+  * Function that gets the client information currently stored on the webpage and puts it into dictionaries
+  *
+  * @return {object/string} returns a list of dictionaries [client] if inputs are valid, returns a string representing type of validity error if invalid inputs
+  */
+  function getClientInformation() {
+    // Instantiate the dictionary that will be used to create the client (pull this info right away to avoid user's changing it)
+    var client = {};
+    // check to ensure that the client is valid (has non-null and unique docket code)
+    var errorMsg = checkInvalidClient();
+    if (errorMsg) { // if check returns a non-null error message, return this error message
+      return errorMsg;
+    }
+    // fill in the client information
+    client["ClientName"] = document.getElementById("clientName").value || "";
+    client["DocketCode"] = document.getElementById("clientDocketCode").value;
+    // turn assigned people list into a string
+    client["PersonID"] = getIDsFromKanban("kanbanAssignedClientPeople").join(',');
+    client["EntityID"] = getIDsFromKanban("kanbanAssignedClientEntities").join(',');
+    client["Status"] = document.getElementById("clientStatus").value;
+    client["SignedLSA"] = document.getElementById("clientLSASigned").checked;
+    client["RetainerPaid"] = document.getElementById("clientRetainerPaid").checked;
+    // return client dictionary within a list
+    return [client];
+  }
+
+  /**
+   * Function to check if the client is invalid (has unique, 3-4 char, non null docket number)
+   * Highlights/marks the required fields that are invalid
+   *
+   * @return {boolean/string} false if the client info is valid; returns appropriate error message ID as string if the client is invalid
+   */
+  function checkInvalidClient() {
+    var clientDocketCode = document.getElementById("clientDocketCode");
+    var docketCode = clientDocketCode.value;
+    // check if the docket code is null
+    if (!docketCode) {
+      // mark the field as invalid
+      clientDocketCode.className = "form-control is-invalid";
+      // return a string to show a specific error message
+      return "proposeClientNullFieldsMessage";
+    } else if (docketCode.length != 3 && docketCode.length != 4) {
+      // mark the field as invalid
+      clientDocketCode.className = "form-control is-invalid";
+      // return a string to show a specific error message
+      return "proposeClientInvalidLengthFieldsMessage";
+    }
+    //check if docket code is unique 
+    //get docket code of client being edited if editing
+    var selectedClientID = document.getElementById("selectedClientID").value;
+    var prevDocketCode = ""; // store the 'previous' docket code to avoid uniqueness-checking issues (code must be unique from all other codes EXCEPT itself)
+    if (selectedClientID) {
+      prevDocketCode = jsonData.clients[selectedClientID]["DocketCode"];
+    }
+    var clientList = Object.values(jsonData.clients);
+    // compare docket code to every other docket code and return error message if there is a match and its not the client currently being edited
+    for (var i = 0; i < clientList.length; i++) {
+      if (docketCode == clientList[i]["DocketCode"] && docketCode != prevDocketCode) {
+        // mark the field as invalid
+        clientDocketCode.className = "form-control is-invalid";
+        return "proposeClientUniqueFieldsMessage";
+      }
+    }
+    // if client is valid format, reset the form field to reflect that
+    clientDocketCode.className = "form-control";
+    // return false to indicate that the inputs were valid
+    return false;
+  }
+
+  /**
+   * Helper function to clear the fields of the client inputs
+   */
+  function clearClientFields() {
+    // set form values to null
+    document.getElementById("clientDocketCode").value = null;
+    document.getElementById("clientName").value = null;
+    document.getElementById("clientStatus").value = "In Review";
+    document.getElementById("clientLSASigned").checked = false;
+    document.getElementById("clientRetainerPaid").checked = false;
+    // hide all error messages
+    document.getElementById("proposeClientNullFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientUniqueFieldsMessage").style.display = "none";
+    document.getElementById("proposeClientInvalidLengthFieldsMessage").style.display = "none";
+    // hide all success messages
+    hideClientSuccessMessages();
+    // clear all required field formating
+    document.getElementById("clientDocketCode").className = "form-control";
+    // reset kanban and list of associates
+    populateClientEntityKanban([]);
+    populateClientPeopleKanban([]);
+    document.getElementById("associatedClientPeopleID").innerHTML = "No Associated People";
+    document.getElementById("associatedClientEntitiesID").innerHTML = "No Associated Entities";
+    // update toggle kan ban to hidden and update btn if its currently not hidden
+    var personKanbanStyle = document.getElementById("clientManagePeopleKanbanOuterDiv").style.display;
+    var entityKanbanStyle = document.getElementById("clientManageEntitiesKanbanOuterDiv").style.display;
+    if (personKanbanStyle == "flex") {
+      toggleClientPeopleKanban();
+    }
+    if (entityKanbanStyle == "flex") {
+      toggleClientEntitiesKanban();
+    }
+  }
+
+  /**
+   * Function to hide the client success messages when the modal body is clicked
+   */
+  function hideClientSuccessMessages() {
+    document.getElementById("proposeClientSuccessMessage").style.display = "none";
+    document.getElementById("editedClientSuccessMessage").style.display = "none";
+  }
+
+  // ---------------------------------------------------------- Kanban Functions ------------------------------------------------------------
+
+  /**
+   * Function that toggles the kanban with people associated with a client
+   */
+  function toggleClientPeopleKanban() {
+    var kanbanStyle = document.getElementById("clientManagePeopleKanbanOuterDiv").style.display;
+    if (kanbanStyle == "flex") { // if kanban is shown
+      // hide kan ban
+      document.getElementById("clientManagePeopleKanbanOuterDiv").style.display = "none";
+      document.getElementById("manageAssociatedClientPeopleBtnID").innerHTML = "Manage Associated People";
+      // pull id's of associated people from kanban
+      var peopleIDs = getIDsFromKanban("kanbanAssignedClientPeople");
+      // update displayed list
+      var nameStr = ""
+      for (var i = 0; i < peopleIDs.length; i++) {
+        nameStr += jsonData.persons[peopleIDs[i]]["FirstName"] + " " + jsonData.persons[peopleIDs[i]]["LastName"] + ", "
+      }
+      var nameHTML; // html for the list of associated people
+      if (nameStr.length == 0) {
+        nameHTML = "No Associated People"
+      } else {
+        nameHTML = nameStr.slice(0, nameStr.length - 2);
+      }
+      document.getElementById("associatedClientPeopleID").innerHTML = nameHTML;
+      // show list of associated people
+      document.getElementById("associatedClientPeopleListID").style.display = "block";
+    } else { // kanban is hidden
+      // hide list of people
+      document.getElementById("associatedClientPeopleListID").style.display = "none";
+      document.getElementById("manageAssociatedClientPeopleBtnID").innerHTML = "Update Associated People";
+      // shows kanban
+      document.getElementById("clientManagePeopleKanbanOuterDiv").style.display = "flex";
+    }
+  }
+
+  /**
+   * toggles the kanban with Entities associated with a Client
+   */
+  function toggleClientEntitiesKanban() {
+    var kanbanStyle = document.getElementById("clientManageEntitiesKanbanOuterDiv").style.display
+    if (kanbanStyle == "flex") { // if kanban is shown
+      // hide kan ban
+      document.getElementById("clientManageEntitiesKanbanOuterDiv").style.display = "none";
+      document.getElementById("manageAssociatedClientEntitiesBtnID").innerHTML = "Manage Associated Entities";
+
+      // pull id's of associated entites from client-entity kanban
+      var entityIDs = getIDsFromKanban("kanbanAssignedClientEntities");
+      // update displayed list
+      var nameStr = "";
+      for (var i = 0; i < entityIDs.length; i++) {
+        nameStr += jsonData.entities[entityIDs[i]]["Name"] + ", ";
+      }
+      var nameHTML; // html for the list of associated entities
+      if (nameStr.length == 0) {
+        nameHTML = "No Associated Entities";
+      } else {
+        nameHTML = nameStr.slice(0, nameStr.length - 2);
+      }
+      document.getElementById("associatedClientEntitiesID").innerHTML = nameHTML;
+      // show list of assigned entities
+      document.getElementById("associatedClientEntitiesListID").style.display = "block";
+    } else { // kanban is hidden
+      // hide list of entities - update kanban toggle button
+      document.getElementById("associatedClientEntitiesListID").style.display = "none";
+      document.getElementById("manageAssociatedClientEntitiesBtnID").innerHTML = "Update Associated Entities";
+      // shows kanban
+      document.getElementById("clientManageEntitiesKanbanOuterDiv").style.display = "flex";
+    }
+  }
+
+  /**
+   * fill out kanban from JSON and passed in list in sorted order 
+   * 
+   * @param {object} associated: a list of entityIDs each associated with the selected client
+   */
+  function populateClientEntityKanban(associated) {
+    // get list of associated entities from json and passed in IDs
+    // Sort it alphabetically by  name
+    associated = associated.sort(function (e1, e2) { return jsonData.entities[e1]["Name"].localeCompare(jsonData.entities[e2]["Name"]) }); // sortList Alphabetically
+    var associatedSet = new Set(associated); // set of associated entities to be used to check for association
+    // make list of non associated entities
+    var entities = Object.keys(jsonData.entities);
+    var unassociated = [];
+    for (var i = 0; i < entities.length; i++) {
+      var entityID = entities[i];
+      // if the entity is not in the set, push them to the unassociated list
+      if (!associatedSet.has(entityID)) {
+        unassociated.push(entityID);
+      }
+    }
+    // sort the unassociated set alphabetically by name
+    unassociated = unassociated.sort(function (e1, e2) { return jsonData.entities[e1]["Name"].localeCompare(jsonData.entities[e2]["Name"]) }); // sortList Alphabetically
+    // add both to kanban
+    // generate the html for the kanbans
+    var associatedString = ""; // the html for the kanban
+    var entity;
+    for (var i = 0; i < associated.length; i++) {
+      entity = jsonData.entities[associated[i]];
+      associatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + entity["Name"] + '</p>' +
+        '<input type="hidden" id="' + entity["Name"] + '" value="' + associated[i] + '">' +
+        '</div>';
+    }
+    associatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    var unassociatedString = "";
+    for (var i = 0; i < unassociated.length; i++) {
+      entity = jsonData.entities[unassociated[i]];
+      unassociatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + entity["Name"] + '</p>' +
+        '<input type="hidden" id="' + entity["Name"] + '" value="' + unassociated[i] + '">' +
+        '</div>';
+    }
+    // display the html
+    unassociatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    document.getElementById("kanbanAssignedClientEntities").innerHTML = associatedString;
+    document.getElementById("kanbanUnassignedClientEntities").innerHTML = unassociatedString;
+  }
+
+  /**
+   * fill out client people kanban from JSON and passed in list in sorted order 
+   * 
+   * @param {object} associated: a list of personIDs each associated with the selected client
+   */
+  function populateClientPeopleKanban(associated) {
+    // get list of associated people from json and passed in IDs
+    // Sort it alphabetically by last name
+    associated = associated.sort(function (p1, p2) { return jsonData.persons[p1]["LastName"].localeCompare(jsonData.persons[p2]["LastName"]) }); // sortList Alphabetically
+    var associatedSet = new Set(associated);
+    // make list of non associated people
+    var people = Object.keys(jsonData.persons);
+    var unassociated = [];
+    for (var i = 0; i < people.length; i++) {
+      var personID = people[i];
+      if (!associatedSet.has(personID)) {
+        unassociated.push(personID);
+      }
+    }
+    // Sort list of unassociated alphabetically by last name
+    unassociated = unassociated.sort(function (p1, p2) { return jsonData.persons[p1]["LastName"].localeCompare(jsonData.persons[p2]["LastName"]) }); // sortList Alphabetically
+    // generate the html for the kanbans
+    var associatedString = "";
+    var person;
+    for (var i = 0; i < associated.length; i++) {
+      person = jsonData.persons[associated[i]];
+      associatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + person["LastName"] + ", " + person["FirstName"] + '</p>' +
+        '<input type="hidden" id="' + person["LastName"] + ", " + person["FirstName"] + '" value="' + associated[i] + '">' +
+        '</div>';
+    }
+    associatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    var unassociatedString = "";
+    for (var i = 0; i < unassociated.length; i++) {
+      person = jsonData.persons[unassociated[i]];
+      unassociatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + person["LastName"] + ", " + person["FirstName"] + '</p>' +
+        '<input type="hidden" id="' + person["LastName"] + ", " + person["FirstName"] + '" value="' + unassociated[i] + '">' +
+        '</div>';
+    }
+    // display the html
+    unassociatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    document.getElementById("kanbanAssignedClientPeople").innerHTML = associatedString;
+    document.getElementById("kanbanUnassignedClientPeople").innerHTML = unassociatedString;
+  }
+
+  // ------------------- Searching within the kanbans ------------------------
+
+  /**
+   * Function that toggles whther or not the search bar is visible for the client-people kanban
+   */
+  function toggleSearchClientPeopleKanban() {
+    var searchBar = document.getElementById("clientAssociatedPeopleSearchBar");
+    if (searchBar.style.display == "none") {
+      // if search bar is hidden, simply clear the search field and show it
+      document.getElementById("clientAssociatedPeopleSearchValue").value = null;
+      searchBar.style.display = "block";
+    } else {
+      // if search bar is visible, refresh unassociated and hide it
+      var associated = getIDsFromKanban("kanbanAssignedClientPeople");
+      populateClientPeopleKanban(associated);
+      searchBar.style.display = "none";
+    }
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the unnassociated people side of the client kanban with only people whose names include the term
+   */
+  function searchClientPeopleKanban() {
+    // Refresh the kanban
+    var associated = getIDsFromKanban("kanbanAssignedClientPeople");
+    populateClientPeopleKanban(associated);
+    // Get the search term
+    var searchTerm = document.getElementById("clientAssociatedPeopleSearchValue").value;
+    // Get the unassociated people
+    var unassociatedPeople = getIDsFromKanban("kanbanUnassignedClientPeople");
+    var refinedList = [];
+    // Iterate through the unassociated people and refine the list to people whose names include the search term
+    var person;
+    for (var i = 0; i < unassociatedPeople.length; i++) {
+      person = jsonData.persons[unassociatedPeople[i]];
+      if (person["FirstName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(unassociatedPeople[i]);
+      } else if (person["LastName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(unassociatedPeople[i]);
+      }
+    }
+    // Replace the unassociated people with the refined list
+    var unassociatedString = "";
+    for (var i = 0; i < refinedList.length; i++) {
+      person = jsonData.persons[refinedList[i]];
+      unassociatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + person["LastName"] + ", " + person["FirstName"] + '</p>' +
+        '<input type="hidden" id="' + person["LastName"] + ", " + person["FirstName"] + '" value="' + refinedList[i] + '">' +
+        '</div>';
+    }
+    // display the html
+    unassociatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    document.getElementById("kanbanUnassignedClientPeople").innerHTML = unassociatedString;
+  }
+
+  /**
+   * Function that toggles whether or not the search bar is visible for the client-entities kanban
+   */
+  function toggleSearchClientEntitiesKanban() {
+    var searchBar = document.getElementById("clientAssociatedEntitiesSearchBar");
+    if (searchBar.style.display == "none") {
+      // if search bar is hidden, simply clear the search field and show it
+      document.getElementById("clientAssociatedEntitiesSearchValue").value = null;
+      searchBar.style.display = "block";
+    } else {
+      // if search bar is visible, refresh unassociated and hide it
+      var associated = getIDsFromKanban("kanbanAssignedClientEntities");
+      populateClientEntityKanban(associated);
+      searchBar.style.display = "none";
+    }
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the unnassociated entity side of the client kanban with only entities whose names include the term
+   */
+  function searchClientEntitiesKanban() {
+    // Refresh the kanban
+    var associated = getIDsFromKanban("kanbanAssignedClientEntities");
+    populateClientEntityKanban(associated);
+    // Get the search term
+    var searchTerm = document.getElementById("clientAssociatedEntitiesSearchValue").value;
+    // Get the unassociated entities
+    var unassociatedEntities = getIDsFromKanban("kanbanUnassignedClientEntities");
+    var refinedList = [];
+    // Iterate through the unassociated entities and refine the list to entities whose names include the search term
+    var entity;
+    for (var i = 0; i < unassociatedEntities.length; i++) {
+      entity = jsonData.entities[unassociatedEntities[i]];
+      if (entity["Name"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(unassociatedEntities[i]);
+      }
+    }
+    // Replace the unassociated entities with the refined list
+    var unassociatedString = "";
+    for (var i = 0; i < refinedList.length; i++) {
+      entity = jsonData.entities[refinedList[i]];
+      unassociatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + entity["Name"] + '</p>' +
+        '<input type="hidden" id="' + entity["Name"] + '" value="' + refinedList[i] + '">' +
+        '</div>';
+    }
+    // display the html
+    unassociatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    document.getElementById("kanbanUnassignedClientEntities").innerHTML = unassociatedString;
+  }
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------   DELETING AND UNDOING CLIENTS   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+  // ------------------------- Deleting a client ---------------------
+
+  /** 
+   * Function to delete a Client 
+   */
+  function deleteClient() {
+    // hide the delete button and replace with loading button
+    document.getElementById("deleteClientButton").style.display = "none";
+    document.getElementById("deleteClientButtonLoading").style.display = "block";
+    // get the Client to be deleted
+    var clientID = document.getElementById("selectedClientID").value;
+    // reset the selected Client id
+    document.getElementById("selectedClientID").value = null;
+    document.getElementById("associatedNoteType").value = null;
+    // delete the Client from the server
+    google.script.run.withSuccessHandler(onSuccessDeleteClient).withFailureHandler(onFailureDeleteClient).deleteClient(clientID, jsonData.matters);
+  }
+
+  /**
+   * onSuccess function for when a Client is successfully deleted
+   * 
+   * @param {object} infoList: a list containing the id of the deleted client
+   */
+  function onSuccessDeleteClient(infoList) {
+    var deletedClientID = infoList[0]
+    // Set the hidden tag
+    document.getElementById("deletedClientID").value = deletedClientID;
+    document.getElementById("parentFolderIDs").value = infoList[1];
+    // Get the deleted client object to display the alert correctly
+    var deletedClient = jsonData.clients[deletedClientID];
+    // remove the deleted client from the jsonData
+    delete jsonData.clients[deletedClientID];
+    // update the delete alert
+    document.getElementById("deletedClientName").innerHTML = deletedClient["ClientName"] + " has been deleted.";
+    // show the successful delete alert
+    document.getElementById("deletedClientAlert").style.display = "flex";
+    // hide loading button and show delete button
+    document.getElementById("deleteClientButtonLoading").style.display = "none";
+    document.getElementById("deleteClientButton").style.display = "block";
+    // update the client list to reflect that this client has been deleted
+    document.getElementById(deletedClientID).style.display = "none";
+    // hide the card of the client that was just deleted
+    document.getElementById("selectedClientCardID").style.display = "none";
+  }
+
+  /**
+   * onFailure function for when a Client is unsuccessfully deleted
+   */
+  function onFailureDeleteClient(err) {
+    alert("Unable to delete this client from the database. Please refresh this page." + err);
+    // hide loading button and show delete button
+    document.getElementById("deleteClientButtonLoading").style.display = "none";
+    document.getElementById("deleteClientButton").style.display = "block";
+  }
+
+  // ------------------------- Undoing a deletion of a client ---------------------
+
+  /**
+   * Function that undoes the delete operation for the most recently deleted Client
+   */
+  function undoDeleteClient() {
+    // get the id of the Client being undeleted
+    var clientID = document.getElementById("deletedClientID").value;
+    var parentFolderIDs = JSON.parse(document.getElementById("parentFolderIDs").value);
+    // hide the undo button and show the loading button
+    document.getElementById("undoDeleteClientButton").style.display = "none";
+    document.getElementById("undoDeleteClientButtonLoading").style.display = "block";
+    // have the server actually undo the deletion
+    google.script.run.withSuccessHandler(onSuccessUndoDeleteClient).withFailureHandler(onFailUndoDeleteClient).undoDeleteClient(clientID, jsonData.matters, parentFolderIDs);
+  }
+
+  /**
+   * onSuccessFunction that reloads the json data and updates style on the page (to be called when data is properly updated by the server)
+   *
+   * @param {object} client: the client object that was just recovered
+   */
+  function onSuccessUndoDeleteClient(client) {
+    var clientID = document.getElementById("deletedClientID").value;
+    // update the json to reflect that the client was recovered
+    jsonData.clients[clientID] = client;
+    // update the Client list to reflect that this Client has been brought back
+    document.getElementById(clientID).style.display = "block";
+    // hide deleted Client alert
+    hideAlert("deletedClientAlert");
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeleteClientButtonLoading").style.display = "none";
+    document.getElementById("undoDeleteClientButton").style.display = "block";
+    // update the success undo alert to have the Client's name
+    document.getElementById("undoDeletedClientName").innerHTML = jsonData.clients[clientID]["ClientName"] + " has been recovered.";
+    // show success undo alert
+    document.getElementById("undoDeletedClientAlert").style.display = "flex";
+    // unselect the client from the client list on the left
+    document.getElementById(clientID).className = "list-group-item hoverable ";
+  }
+
+  /**
+   * onFailure function to be called when the json data is not properly updated by the server
+   */
+  function onFailUndoDeleteClient(err) {
+    alert("Unable to reload json data after undoing the deletion. Please refresh this page. " + err);
+    // hide deleted Client alert
+    hideAlert("deletedClientAlert");
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeleteClientButtonLoading").style.display = "none";
+    document.getElementById("undoDeleteClientButton").style.display = "block";
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------------  PERMISSIONS FUNCTIONS  ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Hides and shows buttons that are restricted for some users depending on their privilege level in the member sheet
+   * Handles this for the client info card
+   *
+   * @param {string} createdBy: string holding email of user who created("last modified") the client
+   * @param {string} status: string holding status of client (inReview or active) 
+   */
+  function updateClientCardPrivileges(createdBy, status) {
+    // Hide all privilege-based buttons
+    document.getElementById("openEditClientModal").style.display = "none"
+    document.getElementById("deleteClientButton").style.display = "none"
+    document.getElementById("acceptClientProposalBtnID").style.display = "none";
+    // Go through and show privilege-based buttons according to the user's privilege level
+    var userPriv = jsonData.user["Privileges"];
+    if (userPriv > 0) {
+      // Show level 1 privileges (edit/delete in review clients if the user created them)
+      // check to see if this person was created by the current user
+      if (createdBy == jsonData.user["Email"] && status == "In Review") {
+        document.getElementById("openEditClientModal").style.display = "inline-block";
+        document.getElementById("deleteClientButton").style.display = "block";
+      }
+      if (userPriv > 1) {
+        if (status == "In Review") {
+          // Show level 2 privileges (edit/delete any in review client)
+          document.getElementById("openEditClientModal").style.display = "inline-block";
+          document.getElementById("deleteClientButton").style.display = "block";
+        }
+        if (userPriv > 2) {
+          // Show level 3 privileges (edit/delete any client)
+          document.getElementById("openEditClientModal").style.display = "inline-block";
+          document.getElementById("deleteClientButton").style.display = "block";
+          // if the client status is in review, show the 'accept client proposal' button
+          var clientID = document.getElementById("selectedClientID").value;
+          var client = jsonData.clients[clientID];
+          if (client["Status"] == "In Review") {
+            document.getElementById("acceptClientProposalBtnID").style.display = "block";
+          }
+        }
+      }
+    }
+  }
+
+  /**
+  * Hides and shows buttons that are restricted for some users depending on their privilege level in the member sheet
+  * Handles this for the add/edit client modal
+  */
+  function updateClientModalPrivileges() {
+    // disable all status form fields
+    document.getElementById("clientStatus").disabled = true;
+    document.getElementById("clientLSASigned").disabled = true;
+    document.getElementById("clientRetainerPaid").disabled = true;
+    // find user privilege
+    var userPriv = jsonData.user["Privileges"];
+    // if user privilege is 3 all user to change client status
+    if (userPriv > 2) {
+      document.getElementById("clientStatus").disabled = false
+      document.getElementById("clientLSASigned").disabled = false;
+      document.getElementById("clientRetainerPaid").disabled = false;
+    }
+  }
+</script>

@@ -1,0 +1,74 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+
+  // called when page loads
+  $(function () {
+    initNavbar();
+  });
+
+  /**
+   * Function to initialize the navbar by updating hrefs and possibly showing a clean database option
+   */
+  function initNavbar() {
+    // set user prolfil picture and name
+    document.getElementById("navProfilPic").src = 'https://drive.google.com/thumbnail?id=' + jsonData.user.ProfilePic;
+    document.getElementById("navUserName").innerHTML = jsonData.user.FirstName + " " + jsonData.user.LastName;
+    // init nav links
+    var url = jsonData.initParams.url;
+    document.getElementById("navContacts").href = url + "?page=Contacts";
+    document.getElementById("navMatters").href = url + "?page=Matters";
+    // docket
+    document.getElementById("navTeam").href = url + "?page=Team";
+    // time
+    document.getElementById("navDashboard").href = url + "?page=Dashboard";
+    // add an option to the dropdown to 'clean' the database if the user has permission level 3
+    if (jsonData.user["Privileges"] > 2) {
+      var cleanDatabaseHTML = '<div class="dropdown-divider border-dark"></div><a id="cleanDatabaseBtn" class="dropdown-item hoverable" style="margin: .5rem" data-toggle="modal" data-target="#cleanDatabaseModal" onclick="onOpenCleanDatabaseModal()"><i class="fas fa-database"></i>Clean Database</a>'
+      $("div[id='navbarDropdownMenu']").find('a').end().append($(cleanDatabaseHTML));
+    }
+  }
+
+  // ----------------------------------------------------------------------   Clean Database Functions   ----------------------------------------------------------------------
+
+  /**
+   * function called when clean database modal is opened
+   */
+  function onOpenCleanDatabaseModal() {
+    document.getElementById("cleanDataSuccessMessage").style.display = "none";
+  }
+
+  /**
+   * calls server function to clean database of all invalid data older than a day
+   */
+  function cleanDatabase() {
+    // Show loading
+    document.getElementById("cleanDataBtn").style.display = "none";
+    document.getElementById("cleanDataBtnLoading").style.display = "block";
+    google.script.run.withSuccessHandler(onSuccessCleanDatabase).withFailureHandler(onFailCleanDatabase).cleanDatabase();
+  }
+
+  /**
+   * function called when server has cleaned the database
+   * 
+   * @param {integer} numRowsDeleted: the number of rows removed from the database
+   */
+  function onSuccessCleanDatabase(numRowsDeleted) {
+    // Stop loading
+    document.getElementById("cleanDataBtnLoading").style.display = "none";
+    document.getElementById("cleanDataBtn").style.display = "block";
+    // Show success message
+    document.getElementById("cleanDataSuccessMessage").innerHTML = numRowsDeleted + " rows were successfully deleted.";
+    document.getElementById("cleanDataSuccessMessage").style.display = "block";
+  }
+
+  /**
+   * alerts the user if server failed to clean the databse
+   */
+  function onFailCleanDatabase(err) {
+    alert("An error occured while trying to clean the database. Please refresh the page. " + err);
+    // Stop loading
+    document.getElementById("cleanDataBtnLoading").style.display = "none";
+    document.getElementById("cleanDataBtn").style.display = "block";
+  }
+
+</script>

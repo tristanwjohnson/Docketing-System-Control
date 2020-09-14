@@ -1,0 +1,800 @@
+<script>
+  var jsonData = <?!= JSON.stringify(jsonData) ?>;
+  console.log(jsonData);
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <?!= HtmlService.createHtmlOutputFromFile('Header').getContent(); ?>
+</head>
+
+<body class="application application-offset bg-light" style="text-align: center">
+
+  <!------------------------------------------------------HTML GOES BELOW----------------------------------------------------------------------->
+
+  <!--------------------------------------- NavBar --------------------------------------------->
+  <?!= HtmlService.createHtmlOutputFromFile('Navbar').getContent(); ?>
+  <!---------------------------------------  Page Title --------------------------------------------->
+  <div class="row">
+    <div class="col-3 mb-4" style="text-align:left">
+      <?var url = getScriptUrl();?><a href='<?=url?>?page=Dashboard'>
+        <button type="button" class="btn bg-light  btn-icon">
+          <span class="btn-inner--icon">
+            <i class="fas fa-chevron-left"></i>
+          </span>
+          <span class="btn-inner--text" style="font-size:0.8rem"> Return to Dashboard</span>
+        </button>
+      </a>
+    </div>
+    <div class="col">
+      <h2 class="">Manage Contacts</h2>
+    </div>
+    <div class="col-3"></div>
+  </div>
+  <!---------------------------------------  Page Nav bar --------------------------------------------->
+  <div class=row>
+    <div class="col">
+      <ul class="nav nav-pills ml-2">
+        <li class="nav-item hoverable">
+          <button id="contactNav" class="btn bg-light " onclick="showContacts()">Contacts</button>
+        </li>
+        <li class="nav-item hoverable">
+          <button id="clientNav" class="btn  " onclick="showClients()">Clients</button>
+        </li>
+        <li class="nav-item hoverable">
+          <button id="inReviewNav" class="btn bg-light " onclick="showInReview()">In Review</button>
+        </li>
+      </ul>
+    </div>
+    <div class="col" style="text-align:right">
+      <button id="addContactNav" class="btn bg-light  btn-icon" data-toggle="modal" data-target="#modal-add-contact"
+        onclick="toggleContactType('init')">
+        <span class="btn-inner--icon">
+          <i class="fas fa-plus"></i>
+        </span>
+        <span class="btn-inner--text">Add Contact</span>
+      </button>
+      <button id="proposeClientNav" class="btn bg-light " style="display: none" data-toggle="modal"
+        data-target="#modal-propose-client" onclick="onOpenClientModal('add')">
+        <span class="btn-inner--icon">
+          <i class="fas fa-plus"></i>
+        </span>
+        <span class="btn-inner--text"> Propose Client</span>
+      </button>
+    </div>
+  </div>
+  <hr style="margin-top: 1rem">
+
+  <!---------------------------------------- HIDDEN TAGS --------------------------------------------->
+
+
+  <input type="hidden" id="selectedPersonID">
+  <input type="hidden" id="selectedEntityID">
+  <input type="hidden" id="selectedClientID">
+  <input type="hidden" id="selectedNoteID">
+  <input type="hidden" id="deletedPersonID">
+  <input type="hidden" id="deletedEntityID">
+  <input type="hidden" id="deletedClientID">
+  <input type="hidden" id="parentFolderIDs">
+
+
+  <!----------------------------------------- CONTACTS ----------------------------------------------->
+
+  <div id="contactDivID" class="container-fluid" style="display: none">
+    <div class="row">
+      <div class="col-4">
+        <!-----Person List Card---->
+        <div class="card  ">
+          <div class="card-header " style="padding:0.7rem">
+            <div class="row">
+              <div class="col" style="text-align:left">
+                <button type="button" class="btn btn-sm   btn-icon-only" onclick="toggleContactSearch('people')">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-search"></i>
+                  </span>
+                </button>
+              </div>
+              <div class="col mt-2">
+                <h5 class="card-title mb-0 ">People</h5>
+              </div>
+              <div class="col" style="text-align:right">
+              </div>
+            </div>
+          </div>
+
+          <div class="row align-items-center" id="peopleListSearchBar" style="margin:0; display:none">
+            <div class="form-group mb-0">
+              <div class="input-group input-group-merge input-group-sm">
+                <input type="text" class="form-control   " style="border:0.5" id="peopleListSearchValue"
+                  placeholder="Search">
+                <div class="input-group-append">
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-sm  " style="border:0.5" onclick="searchPeopleList()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="personListDiv" class="card-body" style="padding:0; height: 15rem; overflow: auto">
+            <ul class="list-group">
+              <li class="list-group-item  hoverable text-dark">NO PEOPLE</li>
+            </ul>
+
+          </div>
+          <!--div class="card-footer ">
+          </div-->
+        </div>
+        <!-----Entity List Card---->
+        <div class="card  ">
+          <div class="card-header " style="padding:0.7rem">
+            <div class="row">
+              <div class="col" style="text-align:left">
+                <button type="button" class="btn btn-sm   btn-icon-only" onclick="toggleContactSearch('entities')">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-search"></i>
+                  </span>
+                </button>
+              </div>
+              <div class="col mt-2">
+                <h5 class="card-title mb-0 ">Entities</h5>
+              </div>
+              <div class="col" style="text-align:right">
+              </div>
+            </div>
+          </div>
+
+          <div class="row align-items-center" id="entitiesListSearchBar" style="margin:0; display:none">
+            <div class="form-group mb-0">
+              <div class="input-group input-group-merge input-group-sm">
+                <input type="text" class="form-control   " style="border:0.5" id="entitiesListSearchValue"
+                  placeholder="Search">
+                <div class="input-group-append">
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-sm  " style="border:0.5" onclick="searchEntitiesList()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="entityListDiv" class="card-body" style="padding:0; height: 15rem; overflow: auto">
+            <ul class="list-group">
+              <li class="list-group-item  hoverable text-dark">NO Entities</li>
+            </ul>
+
+          </div>
+          <!--div class="card-footer ">
+          </div-->
+        </div>
+      </div>
+      <div class="col-8">
+        <!---------------------- Selected Person Alerts -------------------->
+        <!-----Delete person Alert---->
+        <div class="alert alert-group alert-danger alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="deletedPersonAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="far fa-trash-alt"></i>
+            </span>
+          </div>
+          <div id="deletedPersonMessage" class="alert-content">
+            <strong id="deletedPersonName">Person Deleted</strong>
+          </div>
+          <button type="button" id="undoDeletePersonButton" class="btn btn-xs btn-pinterest ml-2"
+            onclick="undoDeletePerson()">Undo</button>
+          <button type="button" id="undoDeletePersonButtonLoading" class="btn btn-xs btn-pinterest btn-icon ml-2"
+            style="display: none" disabled>
+            <span class="btn-inner--text">Undoing</span>
+            <span class="btn-inner--icon">
+              <i class="fas fa-spinner fa-spin"></i>
+            </span>
+          </button>
+
+          <button type="button" class="close" onclick="hideAlert('deletedPersonAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+        <!-----Undo Delete person Alert---->
+        <div class="alert alert-group alert-info alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="undoDeletedPersonAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-trash-restore"></i>
+            </span>
+          </div>
+          <div class="alert-content">
+            <strong id="undoDeletedPersonName">Person recovered.</strong>
+          </div>
+
+          <button type="button" class="close" onclick="hideAlert('undoDeletedPersonAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+        <!------------------- Selected Entity Alerts -------------------->
+        <!-----Delete Entity Alert---->
+        <div class="alert alert-group alert-danger alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="deletedEntityAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="far fa-trash-alt"></i>
+            </span>
+          </div>
+          <div id="deletedEntityMessage" class="alert-content">
+            <strong id="deletedEntityName">Entity Deleted</strong>
+          </div>
+          <button type="button" id="undoDeleteEntityButton" class="btn btn-xs btn-pinterest ml-2"
+            onclick="undoDeleteEntity()">Undo</button>
+          <button type="button" id="undoDeleteEntityButtonLoading" class="btn btn-xs btn-pinterest btn-icon ml-2"
+            style="display: none" disabled>
+            <span class="btn-inner--text">Undoing</span>
+            <span class="btn-inner--icon">
+              <i class="fas fa-spinner fa-spin"></i>
+            </span>
+          </button>
+
+          <button type="button" class="close" onclick="hideAlert('deletedEntityAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+        <!-----Undo Delete Entity Alert---->
+        <div class="alert alert-group alert-info alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="undoDeletedEntityAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-trash-restore"></i>
+            </span>
+          </div>
+          <div class="alert-content">
+            <strong id="undoDeletedEntityName">Entity recovered.</strong>
+          </div>
+
+          <button type="button" class="close" onclick="hideAlert('undoDeletedEntityAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+        <!---------------------------------------- Selected Person ---------------------------------------->
+        <div id="selectedPersonCardID" class="card  " style="display: none">
+          <div class="card-header ">
+            <div class="row">
+              <div class="col-2" style="text-align:left">
+                <button type="button" class="btn btn-outline-primary btn-xs btn-icon-only" onclick="hidePersonInfo()">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-times"></i>
+                  </span>
+                </button>
+              </div>
+
+              <div id="personTitleDiv" class="col">
+                <h5 class="card-title mb-0 ">PERSON <i class="fab fa-google-drive"></i></h5>
+              </div>
+
+              <div class="col-2" style="text-align:right">
+                <button id="openEditPersonModal" style="display:none" type="button"
+                  class="btn btn-outline-primary btn-xs btn-icon-only" data-toggle="modal"
+                  data-target="#modal-add-contact" onclick="toggleContactType('editPerson')">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-edit"></i>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+
+            <div class="row">
+              <div class="col-5" style="text-align:left">
+                <!--person letter name-->
+                <div id="personLetterNameDiv">
+                  <p style="text-align: left">PersonLetterName</p>
+                </div>
+                <!--person phone-->
+                <div id="personPhoneDiv">
+                  <p style="text-align: left">PersonPhone</p>
+                </div>
+                <!--person email-->
+                <div id="personEmailDiv">
+                  <p style="text-align: left">PersonEmail</p>
+                </div>
+                <!--person address-->
+                <div id="personAddressDiv">
+                  <p style="text-align: left">PersonAddress</p>
+                </div>
+                <!--person mailing address-->
+                <div id="personMailingDiv">
+                  <p style="text-align: left; margin-bottom:0">Mailing Address: Same</p>
+                </div>
+              </div>
+              <div class="col">
+                <div class="card  ">
+                  <div class="card-header ">
+                    <div class="row">
+                      <div class="col-2">
+                      </div>
+                      <div class="col-8">
+                        <h5 class="card-title mb-0 ">Person Notes</h5>
+                      </div>
+                      <div class="col-2" style="text-align:right">
+                        <button id="addPersonNoteButton" class="btn btn-xs btn-outline-primary btn-icon-only"
+                          data-toggle="modal" data-target="#modal-note" onclick="toggleNoteType('add')">
+                          <span class="btn-inner--icon">
+                            <i class="fas fa-plus"></i>
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body  " style="padding:0">
+                    <div id="personNoteListDiv" style="padding:0; height: 12rem; overflow: auto">
+                      <ul class="list-group">
+                        <li class="list-group-item hoverable ">NO Notes</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="card-footer ">
+            <div class="row">
+              <div id="createdByDivPerson" class="col" style="text-align:left">
+                <p style="margin:0; font-size:0.7rem">Created By: N/A</p>
+              </div>
+              <div id="dateCreatedDivPerson" class="col">
+                <p style="margin:0; font-size:0.7rem">Date Created: N/A</p>
+              </div>
+              <div class="col">
+                <div id="deletePersonButton" style="margin-left:10%">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" onclick="deletePerson()">
+                    <span class="btn-inner--icon">
+                      <i class="far fa-trash-alt"></i>
+                    </span>
+                    <span class="btn-inner--text">Delete Person</span>
+                  </button>
+                </div>
+                <div id="deletePersonButtonLoading" style="margin-left:10%; display:none">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" disabled>
+                    <span class="btn-inner--icon">
+                      <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <span class="btn-inner--text">Deleting Person</span>
+                  </button>
+                </div>
+                <!--p  style = "margin:0; font-size:0.7rem" > Delete Button</p-->
+              </div>
+            </div>
+          </div>
+        </div>
+        <!---------------------------------------- Selected Entity ---------------------------------------->
+        <div id="selectedEntityCardID" class="card  " style="display: none">
+          <div class="card-header ">
+            <div class="row">
+              <div class="col-2" style="text-align:left">
+                <button type="button" class="btn btn-outline-primary btn-xs btn-icon-only" onclick="hideEntityInfo()">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-times"></i>
+                  </span>
+                </button>
+              </div>
+              <div id="entityTitleDiv" class="col">
+                <h5 class="card-title mb-0 ">ENTITY</h5>
+              </div>
+              <div class="col-2" style="text-align:right">
+                <button id="openEditEntityModal" style="display:none" type="button"
+                  class="btn btn-outline-primary btn-xs btn-icon-only" data-toggle="modal"
+                  data-target="#modal-add-contact" onclick="toggleContactType('editEntity')">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-edit"></i>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+
+            <div class="row">
+              <div class="col-5" style="text-align:left">
+                <!--entity type-->
+                <div id="entityTypeDiv">
+                  <p style="text-align: left">Type:</p>
+                </div>
+                <!--entity state of incorp-->
+                <div id="entityStateOfIncorpDiv">
+                  <p style="text-align: left">State of Incorp:</p>
+                </div>
+                <!--entity people-->
+                <div id="entityAssocPeopleDiv">
+                  <p style="text-align: left">Associated People:</p>
+                </div>
+                <!--entity phone-->
+                <div id="entityPhoneDiv">
+                  <p style="text-align: left">Entity Phone:</p>
+                </div>
+                <!--entity email-->
+                <div id="entityEmailDiv">
+                  <p style="text-align: left">Entity Email:</p>
+                </div>
+                <!--entity address-->
+                <div id="entityAddressDiv">
+                  <p style="text-align: left">Entity Address:</p>
+                </div>
+                <!--entity mailing address-->
+                <div id="entityMailingDiv">
+                  <p style="text-align: left">Entity Mailing Address:</p>
+                </div>
+              </div>
+              <div class="col">
+                <div class="card  ">
+                  <div class="card-header ">
+                    <div class="row">
+                      <div class="col-2">
+                      </div>
+                      <div class="col-8">
+                        <h5 class="card-title mb-0 ">Entity Notes</h5>
+                      </div>
+                      <div class="col-2" style="text-align:right">
+                        <button id="addContactNav" class="btn btn-xs btn-outline-primary btn-icon-only"
+                          data-toggle="modal" data-target="#modal-note" onclick="toggleNoteType('add')">
+                          <span class="btn-inner--icon">
+                            <i class="fas fa-plus"></i>
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body  " style="padding:0">
+                    <div id="entityNoteListDiv" style="padding:0; height: 12rem; overflow: auto">
+                      <ul class="list-group">
+                        <li class="list-group-item hoverable ">NO Notes</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="card-footer ">
+            <div class="row">
+              <div id="createdByDivEntity" class="col" style="text-align:left">
+                <p style="margin:0; font-size:0.7rem">Created By: N/A</p>
+              </div>
+              <div id="dateCreatedDivEntity" class="col">
+                <p style="margin:0; font-size:0.7rem">Date Created: N/A</p>
+              </div>
+              <div class="col">
+                <div id="deleteEntityButton" style=" margin-left:10%">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" onclick="deleteEntity()">
+                    <span class="btn-inner--icon">
+                      <i class="far fa-trash-alt"></i>
+                    </span>
+                    <span class="btn-inner--text">Delete Entity</span>
+                  </button>
+                </div>
+                <div id="deleteEntityButtonLoading" style="margin-left:10%; display:none">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" disabled>
+                    <span class="btn-inner--icon">
+                      <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <span class="btn-inner--text">Deleting Entity</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!----------------------------------------  CLIENTS ---------------------------------------------->
+  <div id="clientDivID" class="container-fluid">
+    <div class="row">
+      <div class="col-4" id="activeClientListID">
+        <!-----Client List Card---->
+        <div class="card  ">
+          <div class="card-header " style="padding:0.7rem">
+            <div class="row">
+              <div class="col" style="text-align:left">
+                <button type="button" class="btn btn-sm   btn-icon-only" onclick="toggleClientSearch('active')">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-search"></i>
+                  </span>
+                </button>
+              </div>
+              <div class="col mt-2">
+                <h5 class="card-title mb-0 ">Clients</h5>
+              </div>
+              <div class="col">
+              </div>
+            </div>
+          </div>
+
+          <div class="row align-items-center" id="activeListSearchBar" style="margin:0; display:none">
+            <div class="form-group mb-0">
+              <div class="input-group input-group-merge input-group-sm">
+                <input type="text" class="form-control   " style="border:0.5" id="activeListSearchValue"
+                  placeholder="Search">
+                <div class="input-group-append">
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-sm  " style="border:0.5" onclick="searchActiveList()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="clientListDiv" class="card-body" style="padding:0; height: 25rem; overflow: auto">
+            <ul class="list-group">
+              <li class="list-group-item  hoverable text-dark">NO CLIENTS</li>
+            </ul>
+
+          </div>
+          <!--div class="card-footer ">
+          </div-->
+        </div>
+      </div>
+
+      <div class="col-4" id="inReviewClientListID">
+        <!-----Client In Review List Card---->
+        <div class="card  ">
+          <div class="card-header " style="padding:0.7rem">
+            <div class="row">
+              <div class="col" style="text-align:left">
+                <button type="button" class="btn btn-sm   btn-icon-only" onclick="toggleClientSearch('inReview')">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-search"></i>
+                  </span>
+                </button>
+              </div>
+              <div class="col mt-2">
+                <h5 class="card-title mb-0 ">Clients In Review</h5>
+              </div>
+              <div class="col">
+              </div>
+            </div>
+          </div>
+
+          <div class="row align-items-center" id="inReviewListSearchBar" style="margin:0; display:none">
+            <div class="form-group mb-0">
+              <div class="input-group input-group-merge input-group-sm">
+                <input type="text" class="form-control   " style="border:0.5" id="inReviewListSearchValue"
+                  placeholder="Search">
+                <div class="input-group-append">
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-sm  " style="border:0.5" onclick="searchInReviewList()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="inReviewListDiv" class="card-body" style="padding:0; height: 25rem; overflow: auto">
+            <ul class="list-group">
+              <li class="list-group-item hoverable text-dark">NO CLIENTS IN REVIEW</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-8">
+        <!-----Delete Client Alert---->
+        <div class="alert alert-group alert-danger alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="deletedClientAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="far fa-trash-alt"></i>
+            </span>
+          </div>
+          <div id="deletedClientMessage" class="alert-content">
+            <strong id="deletedClientName">Client Deleted</strong>
+          </div>
+          <button type="button" id="undoDeleteClientButton" class="btn btn-xs btn-pinterest ml-2"
+            onclick="undoDeleteClient()">Undo</button>
+          <button type="button" id="undoDeleteClientButtonLoading" class="btn btn-xs btn-pinterest btn-icon ml-2"
+            style="display: none" disabled>
+            <span class="btn-inner--text">Undoing</span>
+            <span class="btn-inner--icon">
+              <i class="fas fa-spinner fa-spin"></i>
+            </span>
+          </button>
+
+          <button type="button" class="close" onclick="hideAlert('deletedClientAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+        <!-----Undo Delete Client Alert---->
+        <div class="alert alert-group alert-info alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="undoDeletedClientAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-trash-restore"></i>
+            </span>
+          </div>
+          <div class="alert-content">
+            <strong id="undoDeletedClientName">Client recovered.</strong>
+          </div>
+
+          <button type="button" class="close" onclick="hideAlert('undoDeletedClientAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+        <!----------------------------------------------- Selected Client -------------------------------------->
+        <div id="selectedClientCardID" class="card  " style="display: none">
+          <div class="card-header ">
+            <div class="row">
+              <div class="col-4" style="text-align:left">
+                <button type="button" class="btn btn-outline-primary btn-xs btn-icon-only" onclick="hideClientInfo()">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-times"></i>
+                  </span>
+                </button>
+              </div>
+              <div id="clientTitleDiv" class="col">
+                <h5 class="card-title mb-0 ">CLIENT</h5>
+              </div>
+              <div class="col-3" style="text-align:right">
+                <button id="acceptClientProposalBtnID" style="display:inline-block" type="button"
+                  class="btn btn-xs btn-outline-success" onclick="acceptClientProposal()">
+                  Accept Client Proposal
+                </button>
+                <button id="acceptClientProposalBtnIDLoading" style="display:none" type="button"
+                  class="btn btn-xs btn-outline-success btn-icon" disabled>
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                  <span class="btn-inner--text">Accepting Proposal</span>
+                </button>
+              </div>
+              <div class="col-1" style="text-align:right">
+                <button id="openEditClientModal" style="display:none" type="button"
+                  class="btn btn-outline-primary btn-xs btn-icon-only" data-toggle="modal"
+                  data-target="#modal-propose-client" onclick="onOpenClientModal('edit')">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-edit"></i>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <!-- Show client status, LSA, retainer -->
+            <div class="row">
+              <div class="col">
+                <p style="margin:0; font-size:0.85rem; text-align: center" id="statusP">Status:</p>
+              </div>
+              <div class="col">
+                <p style="margin:0; font-size:0.85rem; text-align: center" id="LSAP">LSA:</p>
+              </div>
+              <div class="col">
+                <p style="margin:0; font-size:0.85rem; text-align: center" id="retainerP">Retainer:</p>
+              </div>
+            </div><br>
+            <!-- Show enitit(y/ies) -->
+            <div id="clientEntityDivID"></div>
+            <!-- Show person(s) -->
+            <div id="clientPersonDivID"></div>
+            <!--matters-->
+            <!--notes-->
+            <br>
+
+            <div class="row">
+              <div class="col">
+                <div class="card  ">
+                  <div class="card-header ">
+                    <h5 class="card-title mb-0 ">Client Matters</h5>
+                  </div>
+                  <div class="card-body  " style="padding:0">
+                    <div id="clientMatterListDiv" style="padding:0; height: 12rem; overflow: auto">
+                      <ul class="list-group">
+                        <li class="list-group-item hoverable ">NO Matters</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="card  ">
+                  <div class="card-header ">
+                    <div class="row">
+                      <div class="col-2">
+                      </div>
+                      <div class="col-8">
+                        <h5 class="card-title mb-0 ">Client Notes</h5>
+                      </div>
+                      <div class="col-2" style="text-align:right">
+                        <button id="addClientNav" class="btn btn-xs btn-outline-primary btn-icon-only"
+                          data-toggle="modal" data-target="#modal-note" onclick="toggleNoteType('add')">
+                          <span class="btn-inner--icon">
+                            <i class="fas fa-plus"></i>
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-body  " style="padding:0">
+                    <div id="clientNoteListDiv" style="padding:0; height: 12rem; overflow: auto">
+                      <ul class="list-group">
+                        <li class="list-group-item hoverable ">NO Notes</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer ">
+            <div class="row">
+              <div id="createdByDivClient" class="col" style="text-align:left">
+                <p style="margin:0; font-size:0.7rem">Created By: N/A</p>
+              </div>
+              <div id="dateCreatedDivClient" class="col">
+                <p style="margin:0; font-size:0.7rem">Date Created: N/A</p>
+              </div>
+              <div class="col">
+                <div id="deleteClientButton" style=" margin-left:10%">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" onclick="deleteClient()">
+                    <span class="btn-inner--icon">
+                      <i class="far fa-trash-alt"></i>
+                    </span>
+                    <span class="btn-inner--text">Delete Client</span>
+                  </button>
+                </div>
+                <div id="deleteClientButtonLoading" style="margin-left:10%; display:none">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" disabled>
+                    <span class="btn-inner--icon">
+                      <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <span class="btn-inner--text">Deleting Client</span>
+                  </button>
+                </div>
+                <!--p  style = "margin:0; font-size:0.7rem" > Delete Button</p-->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!---------------------------------------- Add/Edit Modals ------------------------------------------------->
+  <?!= HtmlService.createHtmlOutputFromFile('Add-Edit-Contact-Modal').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Add-Edit-Client-Modal').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Note-Modal').getContent(); ?>
+  <!---------------------------------------- Footer ------------------------------------------------->
+
+
+  <!---------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+  <?!= HtmlService.createHtmlOutputFromFile('Footer').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('NoteJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('ContactsJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('ClientsJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('MattersJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('NavbarJS').getContent(); ?>
+
+</body>
+
+</html>

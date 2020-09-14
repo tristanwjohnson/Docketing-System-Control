@@ -1,0 +1,63 @@
+<script>
+  var jsonData = <?!= JSON.stringify(jsonData) ?>;
+  console.log(jsonData);
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <?!= HtmlService.createHtmlOutputFromFile('Header').getContent(); ?>
+</head>
+
+<body class="application application-offset bg-light" style="text-align: center">
+  <!------------------------------------------------------HTML GOES BELOW----------------------------------------------------------------------->
+
+  <!--------------------------------------- NavBar --------------------------------------------->
+  <?!= HtmlService.createHtmlOutputFromFile('Navbar').getContent(); ?>
+  <!---------------------------------------  Page Title --------------------------------------------->
+  <div class="row">
+    <div class="col-3 mb-4" style="text-align:left">
+      <?var url = getScriptUrl();?><a href='<?=url?>?page=Dashboard'>
+        <button type="button" class="btn bg-light  btn-icon">
+          <span class="btn-inner--icon">
+            <i class="fas fa-chevron-left"></i>
+          </span>
+          <span class="btn-inner--text" style="font-size:0.8rem"> Return to Dashboard</span>
+        </button>
+      </a>
+    </div>
+    <div class="col">
+      <h2 class="">Team View</h2>
+    </div>
+    <div class="col-3 mr-2" style="text-align:right">
+      <button type="button" class="btn btn-icon btn-sm btn-outline-primary" data-toggle="modal"
+        data-target="#modal-add-edit-task" onclick="onOpenAddEditTaskModal('add')">
+        <span class="btn-inner--icon"><i class="fas fa-plus"></i></span>
+        <span class="btn-inner--text">New Task</span>
+      </button>
+    </div>
+  </div>
+
+  <!------------------------------------------- Rest of Body -------------------------------------------->
+
+  <div class="row mx-1" id="memberRow">
+  </div>
+
+
+  <!---------------------------------------- Footer ------------------------------------------------->
+
+  <!--------------------------------------------------------------------- Modals -------------------------------------------------------------------------------------->
+
+  <?!= HtmlService.createHtmlOutputFromFile('Task-Modals').getContent(); ?>
+
+  <!---------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+  <?!= HtmlService.createHtmlOutputFromFile('Footer').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('NavbarJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('TaskJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('MattersJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('TeamJS').getContent(); ?>
+</body>
+
+</html>

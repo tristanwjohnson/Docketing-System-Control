@@ -1,0 +1,94 @@
+<!----------------------------------------- Add Matter Type Modal ---------------------------------------------->
+<div class="modal fade" id="modal-add-matter-type" tabindex="-1" role="dialog" aria-labelledby="modal-add-matter-type"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered " role="document">
+    <div class="modal-content" onclick="hideMatterTypeSuccessMessage()">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-8">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-gavel" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="clientModalTitle"> Create New Matter Type</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <!----------------------- Add Matter Type Div ---------------------->
+        <form id="addTypeForm">
+          <div class="form-row" id="typeTitle">
+            <div class="col-10 mb-3">
+              <label for="input_typeTitle">Title</label>
+              <input type="text" class="form-control" id="input_typeTitle" placeholder="Title">
+            </div>
+            <div class="col-2 mb-3">
+              <label for="input_typePrefix">Prefix</label>
+              <input type="text" class="form-control px-2" style="text-align:center" id="input_typePrefix">
+            </div>
+          </div>
+        </form>
+        <div class="col mb-3">
+          <button type="button" class="btn btn-primary btn-sm btn-icon" id="addTypeFieldBtnID" style="margin:auto"
+            onclick="addTypeField()">
+            <span class="btn-inner--icon">
+              <i class="fas fa-plus"></i>
+            </span>
+            <span class="btn-inner--text">New Field</span>
+          </button>
+        </div>
+      </div>
+      <!-- Footer -->
+      <div class="modal-footer" style="margin:0">
+        <div class="container">
+          <div class="row">
+
+            <div class="col" style="text-align:center">
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addMatterTypeBtnID" style="margin:auto"
+                onclick="addMatterType()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </span>
+                <span class="btn-inner--text">Add Type</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addMatterTypeBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Adding Type</span>
+              </button>
+            </div>
+          </div><br>
+          <div class="row">
+            <div class="col">
+              <p id="addMatterTypeSuccessMessage" style="display:none" class="text-success mb-0">Type Added
+                Successfully.</p>
+              <p id="addMatterTypeNullFieldsMessage" style="display:none" class="text-danger mb-0">Please Fill Out All
+                Required Fields
+                For This Matter Type</p>
+              <p id="addMatterTypeUniqueNameMessage" style="display:none" class="text-danger mb-0">This Matter Type
+                Already Exists.</p>
+              <p id="addMatterTypeUniquePrefixMessage" style="display:none" class="text-danger mb-0">This Prefix Already
+                Exists For A Matter Type.</p>
+              <p id="addMatterTypeUniqueFieldMessage" style="display:none" class="text-danger mb-0">Please Enter Unique
+                Field Names.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,167 @@
+<!----------------------------------------- Hidden Tags ---------------------------------------------->
+
+<input type="hidden" id="associatedNoteType">
+<!-- holds a string denoting which type the note is associated with (person, client, matter, etc)-->
+
+<!----------------------------------------- Add/Edit Note Modal ---------------------------------------------->
+<div class="modal fade" id="modal-note" tabindex="-1" role="dialog" aria-labelledby="modal-note" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content  " onclick="hideNoteSuccessMessages()">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-3">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="far fa-sticky-note" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="NoteModalTitle">Notes</div>
+              </div>
+            </div>
+            <div class="col-6">
+            </div>
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <!----------------------- show note Div ---------------------->
+        <div id="showNoteDiv" style="display:none">
+          <h5 class="" id="displayNoteTitle"> TITLE placeholder</h5>
+          <br>
+          <p id="displayNoteSubject">SUBJECT placeholder</p>
+        </div>
+        <!----------------------- Add/Edit note Div ---------------------->
+        <div id="addEditNoteDiv" style="display:none">
+          <!-- note form -->
+          <form>
+            <!--h5 class=" mt-3" style="text-align:left">Note Information</h5-->
+            <div class="form-row">
+              <div class="col mb-3">
+                <label for="addEditNoteTitle">Title</label>
+                <input type="text" class="form-control" id="addEditNoteTitle" placeholder="Title">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col mb-3">
+                <label for="addEditNoteSubject">Subject</label>
+                <!--input type="textarea" class="form-control" id="addEditNoteSubject" placeholder="Subject"-->
+                <textarea class="form-control" id="addEditNoteSubject" data-toggle="autosize" placeholder="Subject"
+                  rows="2"></textarea>
+              </div>
+            </div>
+            <!--Potential kanban to be used for assigning multiple matters to a note-->
+          </form>
+        </div>
+      </div>
+      <!-- Footer -->
+      <div class="modal-footer" style="margin:0">
+        <div class="container">
+          <div class="row" id="noteMetadataRow" style="display:none">
+            <div class="col-8" style="text-align:left">
+              <p id="noteCreated" style="margin:0; font-size:0.7rem">Created: N/A</p>
+              <p id="noteModified" style="margin:0; font-size:0.7rem">Last Modified: N/A</p>
+            </div>
+            <div class="col">
+            </div>
+            <div class="col-3" style="text-align:right">
+              <span>
+
+                <button type="button" id="openEditNoteBtn" class="btn btn-xs btn-outline-primary btn-icon-only"
+                  onclick="toggleNoteType('edit')">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-edit"></i>
+                  </span>
+                </button>
+
+
+                <button id="openEditNoteBtnLoading" style="display:none" type="button"
+                  class="btn btn-outline-primary btn-xs btn-icon-only" disabled>
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                </button>
+
+
+                <button id="deleteNoteBtn" type="button" class="btn btn-xs btn-outline-danger btn-icon-only"
+                  onclick="deleteNote()">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-trash-alt"></i>
+                  </span>
+                </button>
+
+
+                <button id="deleteNoteBtnLoading" style="display:none" type="button"
+                  class="btn btn-outline-danger btn-xs btn-icon-only" disabled>
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                </button>
+
+              </span>
+            </div>
+          </div>
+          <div class="row" id="noteAddEditButtonsRow" style="display:none">
+            <div class="col-3"></div>
+
+            <div class="col" style="text-align:center">
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addNoteBtnID"
+                style="display:none; margin:auto" onclick="addNote()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-plus"></i>
+                </span>
+                <span class="btn-inner--text">Add Note</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addNoteBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Adding Note</span>
+              </button>
+
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editNoteBtnID"
+                style="display:none; margin:auto" onclick="editNote()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </span>
+                <span class="btn-inner--text">Edit Note</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editNoteBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Editing Note</span>
+              </button>
+            </div>
+            <div class="col-3"></div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <p id="addNoteSuccessMessage" style="display:none; margin-top:1rem; margin-bottom:0" class="text-success">
+                Note Added Successfully.</p>
+              <p id="editNoteSuccessMessage" style="display:none; margin-top:1rem; margin-bottom:0"
+                class="text-success">Note Edited Successfully.
+              </p>
+              <p id="addNoteNullFieldsMessage" style="display:none; margin-top:1rem; margin-bottom:0"
+                class="text-danger">Please Fill Out All
+                Required Fields.</p>
+              <p id="deleteNoteSuccessMessage" style="display:none; margin-top:1rem; margin-bottom:0"
+                class="text-danger">Note Deleted
+                Successfully.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,180 @@
+<!----------------------------------------- Add/Edit Matter Modal ---------------------------------------------->
+<div class="modal fade" id="modal-add-edit-matter" tabindex="-1" role="dialog" aria-labelledby="modal-add-edit-matter"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content  " onclick="hideMatterSuccessMessages()">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-3">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-gavel" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="matterModalTitle">Add Matter</div>
+              </div>
+            </div>
+
+            <div class="col-6">
+            </div>
+
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <form>
+          <!--Matter Type Select-->
+          <h5 class=" mt-3" style="text-align:left">Matter Type</h5>
+          <div class="form-row">
+            <select class="custom-select" id="newMatterType" onchange="showMatterTypeForm()">
+              <option value="Not Specified">Select a Type</option>
+            </select>
+          </div>
+          <h5 class=" mt-3" style="text-align:left">Matter Info</h5>
+          <div class="form-row">
+            <!--Docket Number-->
+            <div class="col-4">
+              <label for="matterDocketNumber">Docket Number</label>
+              <div class="input-group">
+                <div class="input-group-prepend">
+                  <span class="input-group-text" id="docketCodePrepend"></span>
+                </div>
+                <input type="text" class="form-control" id="matterDocketNumber" style="text-align:left"
+                  placeholder="Docket Number">
+              </div>
+            </div>
+            <!--Matter Description-->
+            <div class="col-8">
+              <label for="matterDescription">Description</label>
+              <textarea type="text" class="form-control" id="matterDescription" placeholder="Description"></textarea>
+            </div>
+          </div>
+          <!--Matter Info-->
+          <h5 class=" mt-3 mb-3" style="text-align:left">Matter Assignments</h5>
+          <div class="form-row">
+            <!--Client-->
+            <div class="col-6">
+              <p id="selectedMatterClientName" style="text-align:left"> Selected Client:</p>
+              <input type="hidden" id="selectedMatterClientID">
+
+              <div class="card">
+                <div class="row align-items-center" id="matterClientListSearchBar" style="margin:0; display:inline">
+                  <div class="form-group mb-0">
+                    <div class="input-group input-group-merge input-group-sm">
+                      <input type="text" class="form-control   " style="border:0.5" id="matterClientListSearchValue"
+                        placeholder="Search Clients">
+                      <div class="input-group-append">
+                        <span class="input-group-btn">
+                          <button type="button" class="btn btn-sm  " style="border:0.5"
+                            onclick="searchMatterClientList()">
+                            <i class="fas fa-search"></i>
+                          </button>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="matterClientListDiv" class="card-body" style="padding:0; height: 15rem; overflow: auto">
+                  <ul class="list-group">
+                    <li class="list-group-item hoverable text-dark">NO Clients</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="col-6">
+              <p id="selectedAssignedMemberName" value="woah" style="text-align:left"> Assigned Member:</p>
+              <input type="hidden" id="selectedAssignedMemberID">
+
+              <div class="card">
+                <div class="row align-items-center" id="matterMemberListSearchBar" style="margin:0; display:inline">
+                  <div class="form-group mb-0">
+                    <div class="input-group input-group-merge input-group-sm">
+                      <input type="text" class="form-control   " style="border:0.5" id="matterMemberListSearchValue"
+                        placeholder="Search Members">
+                      <div class="input-group-append">
+                        <span class="input-group-btn">
+                          <button type="button" class="btn btn-sm  " style="border:0.5"
+                            onclick="searchMatterMemberList()">
+                            <i class="fas fa-search"></i>
+                          </button>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="matterMemberListDiv" class="card-body" style="padding:0; height: 15rem; overflow: auto">
+                  <ul class="list-group">
+                    <li class="list-group-item hoverable text-dark">NO Members</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!--Type Specific Fields (populated by js)-->
+          <div id="matterTypeFields" style="display:none">
+          </div>
+
+        </form>
+      </div>
+      <!-- Footer -->
+      <div class="modal-footer" style="margin:0">
+        <div class="container">
+          <div class="row">
+            <div class="col"></div>
+            <div class="col" style="text-align:center">
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addMatterBtnID"
+                style="display:none; margin:auto" onclick="addMatter()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-plus"></i>
+                </span>
+                <span class="btn-inner--text">Add Matter</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="addMatterBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Adding Matter</span>
+              </button>
+
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editMatterBtnID"
+                style="display:none; margin:auto" onclick="editMatter()">
+                <span class="btn-inner--icon">
+                  <i class="fas fa-plus"></i>
+                </span>
+                <span class="btn-inner--text">Edit Matter</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm btn-icon" id="editMatterBtnIDLoading"
+                style="display:none; margin:auto" disabled>
+                <span class="btn-inner--icon">
+                  <i class="fas fa-spinner fa-spin"></i>
+                </span>
+                <span class="btn-inner--text">Editing Matter</span>
+              </button>
+            </div>
+            <div class="col">
+              <p id="addMatterSuccessMessage" style="display:none" class="text-success">Matter Added Successfully.</p>
+              <p id="editMatterSuccessMessage" style="display:none" class="text-success">Matter Edited Successfully.
+              </p>
+              <p id="addMatterNullFieldsMessage" style="display:none" class="text-danger">Please Fill Out All
+                Required Fields.</p>
+              <p id="addMatterValidDocketNoMessage" style="display:none" class="text-danger">Please Ensure the Docket
+                Number is a Valid, Positive Integer.</p>
+              <p id="addMatterUniqueFieldsMessage" style="display:none" class="text-danger">Please Ensure the Docket
+                Number is Unique.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

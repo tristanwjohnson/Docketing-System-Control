@@ -1,0 +1,553 @@
+<script>
+  var jsonData = <?!= JSON.stringify(jsonData) ?>;
+  console.log(jsonData);
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <?!= HtmlService.createHtmlOutputFromFile('Header').getContent(); ?>
+</head>
+
+<body class="application application-offset bg-light" style="text-align: center">
+
+  <!------------------------------------------------------HTML GOES BELOW----------------------------------------------------------------------->
+
+  <!--------------------------------------- NavBar --------------------------------------------->
+  <?!= HtmlService.createHtmlOutputFromFile('Navbar').getContent(); ?>
+  <!---------------------------------------  Page Title --------------------------------------------->
+  <div class="row">
+    <div class="col-4 my-auto" style="text-align:left">
+      <?var url = getScriptUrl();?><a href='<?=url?>?page=Dashboard'>
+        <button type="button" class="btn bg-light  btn-icon">
+          <span class="btn-inner--icon">
+            <i class="fas fa-chevron-left"></i>
+          </span>
+          <span class="btn-inner--text" style="font-size:0.8rem"> Return to Dashboard</span>
+        </button>
+      </a>
+    </div>
+    <div class="col my-auto">
+      <h2 class="">Matters</h2>
+    </div>
+    <div class="col-4 my-auto" style="text-align:right">
+      <div id="newMatterButton">
+        <button type="button" class="btn bg-light " data-toggle="modal" data-target="#modal-add-edit-matter"
+          onclick="onOpenMatterModal('add')">
+          <span class="btn-inner--icon"><i class="fas fa-plus"></i></span>
+          <span class="btn-inner--text">New Matter</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <!---------------------------------------  Page Nav bar --------------------------------------------->
+
+  <hr style="margin-top: 1rem">
+
+  <!---------------------------------------- HIDDEN TAGS --------------------------------------------->
+  <input type="hidden" id="selectedType" value="All">
+  <input type="hidden" id="selectedMatterID">
+  <input type="hidden" id="selectedClientID">
+  <input type="hidden" id="selectedNoteID">
+  <input type="hidden" id="deletedMatterID">
+  <input type="hidden" id="deletedMatterClientID">
+  <input type="hidden" id="parentFolderIDs">
+
+  <!---------------------------------------- REST OF PAGE -------------------------------------------->
+
+
+  <div id="matterDivID" class="container-fluid">
+    <div class="row">
+      <div class="col-4" id="matterListID">
+        <div class="my-auto" style="text-align: left">Matter Type:&nbsp;
+          <div class="dropdown" style="display:inline-block; width:50%">
+            <button class="btn btn-primary bg-primary-light btn-sm " style="width:100%" type="button"
+              data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+              <div class="row">
+                <div class="col-2"></div>
+                <div id="matterTypeButtonTitle" class="col">All</div>
+                <div class="col-2"><i class="fas fa-angle-down"></i></div>
+              </div>
+            </button>
+            <div id="matterTypeDropdownMenu" class="dropdown-menu dropdown-menu-primary  "
+              style="border-width:1px; border-style:solid"></div>
+          </div>
+        </div><br>
+        <!-----Matter List Card---->
+        <div class="card">
+          <div class="card-header " style="padding:0.7rem">
+            <div class="row">
+              <div class="col" style="text-align:left">
+                <button type="button" class="btn btn-sm   btn-icon-only" onclick="toggleMatterSearch()">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-search"></i>
+                  </span>
+                </button>
+              </div>
+              <div class="col mt-2">
+                <h5 id="matterListName" class="card-title mb-0 ">Matters</h5>
+              </div>
+              <div class="col" style="text-align:right">
+                <div class="dropdown">
+                  <button type="button" class="btn btn-sm" style="border:0.5" data-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-sort"></i>
+                  </button>
+                  <div id="matterSortDropdownMenu" class="dropdown-menu dropdown-menu-primary  "
+                    style="border-width:1px; border-style:solid">
+                    <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                      onclick="matterListSortBy('newToOld', 'matterListDiv')">
+                      <p class="mb-0">Sort By: Task Date</p>
+                      <i class="fas fa-sort-down my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                    </a>
+                    <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                      onclick="matterListSortBy('oldToNew', 'matterListDiv')">
+                      <p class="mb-0">Sort By: Task Date</p>
+                      <i class="fas fa-sort-up my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                    </a>
+                    <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                      onclick="matterListSortBy('AtoZ', 'matterListDiv')">
+                      <p class="mb-0">Sort By: Docket No.</p>
+                      <i class="fas fa-sort-down my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                    </a>
+                    <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                      onclick="matterListSortBy('ZtoA', 'matterListDiv')">
+                      <p class="mb-0">Sort By: Docket No.</p>
+                      <i class="fas fa-sort-up my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row align-items-center" id="matterListSearchBar" style="margin:0; display:none">
+            <div class="form-group mb-0">
+              <div class="input-group input-group-merge input-group-sm">
+                <input type="text" class="form-control   " style="border:0.5" id="matterListSearchValue"
+                  placeholder="Search By Docket Number">
+                <div class="input-group-append">
+                  <span class="input-group-btn">
+                    <button type="button" class="btn btn-sm  " style="border:0.5" onclick="searchMatterList()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="matterListDiv" class="card-body" style="padding:0; height: 25rem; overflow: auto">
+            <ul class="list-group">
+              <li class="list-group-item  hoverable text-dark">NO Matters</li>
+            </ul>
+          </div>
+        </div>
+        <!--Closed Matter Accordion-->
+        <div id="closedMatterAccordion" class="accordion accordion-spaced">
+          <!-- PlaceHolder to better format shown accordion -->
+          <div style="display:none">
+            <div class="card-header" data-toggle="collapse">
+            </div>
+            <div class="collapse">
+            </div>
+          </div>
+          <!-- Closed Matter Accordion card -->
+          <div class="card" style="border-radius:0.25rem">
+            <div class="card-header py-4 " id="closedMatterHeading" style="margin-bottom:0"
+              onclick="resetClosedMatterSearch()" data-toggle="collapse" role="button"
+              data-target="#closedMatterCollapse" aria-expanded="false" aria-controls="closedMatterCollapse">
+              <div class="row">
+                <div class="col my-auto">
+                  <h5 class="card-title mb-0" id="closedMatterListName">Closed Matters</h5>
+                </div>
+              </div>
+            </div>
+            <div id="closedMatterCollapse" class="collapse" aria-labelledby="closedMatterHeading"
+              data-parent="#closedMatterAccordion">
+              <div class="row align-items-center" id="closedMatterListSearchBar" style="margin:0; display:inline">
+                <div class="form-group mb-0">
+                  <div class="input-group input-group-merge input-group-sm">
+                    <div class="input-group-prepend">
+                      <div class="dropdown" id="closedSortDropdown">
+                        <button type="button" class="btn btn-sm" style="border:0.5" data-toggle="dropdown"
+                          aria-haspopup="true" aria-expanded="false">
+                          <i class="fas fa-sort"></i>
+                        </button>
+                        <div id="closedSortDropdownMenu" class="dropdown-menu dropdown-menu-left  "
+                          style="border-width:1px; border-style:solid">
+                          <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                            onclick="matterListSortBy('newToOld', 'closedMatterListDiv')">
+                            <p class="mb-0">Sort By: Task Date</p>
+                            <i class="fas fa-sort-down my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                          </a>
+                          <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                            onclick="matterListSortBy('oldToNew', 'closedMatterListDiv')">
+                            <p class="mb-0">Sort By: Task Date</p>
+                            <i class="fas fa-sort-up my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                          </a>
+                          <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                            onclick="matterListSortBy('AtoZ', 'closedMatterListDiv')">
+                            <p class="mb-0">Sort By: Docket No.</p>
+                            <i class="fas fa-sort-down my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                          </a>
+                          <a class="dropdown-item" style="display:flex; justify-content:space-between"
+                            onclick="matterListSortBy('ZtoA', 'closedMatterListDiv')">
+                            <p class="mb-0">Sort By: Docket No.</p>
+                            <i class="fas fa-sort-up my-auto mx-0" style="font-size:85%" aria-hidden="true"></i>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                    <input type="text" class="form-control" style="border:0.5" id="closedMatterListSearchValue"
+                      placeholder="Search By Docket Number">
+                    <div class="input-group-append">
+                      <span class="input-group-btn">
+                        <button type="button" class="btn btn-sm  " style="border:0.5"
+                          onclick="searchClosedMatterList()">
+                          <i class="fas fa-search"></i>
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body" style="padding:0">
+                <div id="closedMatterListDiv" style="padding:0; height: 25rem; overflow: auto">
+                  <ul class="list-group">
+                    <li class="list-group-item hoverable ">NO CLOSED MATTERS</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--------------------------------------------- Selected Matter Card Div ---------------------------------------------->
+      <div class="col-8">
+        <!-------------------------- Delete Matter Alert ---------------------->
+        <div class="alert alert-group alert-danger alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="deletedMatterAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="far fa-trash-alt"></i>
+            </span>
+          </div>
+          <div id="deletedMatterMessage" class="alert-content">
+            <strong id="deletedMatterName">Matter Deleted</strong>
+          </div>
+          <button type="button" id="undoDeleteMatterButton" class="btn btn-xs btn-pinterest ml-2"
+            onclick="undoDeleteMatter()">Undo</button>
+          <button type="button" id="undoDeleteMatterButtonLoading" class="btn btn-xs btn-pinterest btn-icon ml-2"
+            style="display: none" disabled>
+            <span class="btn-inner--text">Undoing</span>
+            <span class="btn-inner--icon">
+              <i class="fas fa-spinner fa-spin"></i>
+            </span>
+          </button>
+
+          <button type="button" class="close" onclick="hideAlert('deletedMatterAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+        <!--------------------------Undo Delete Matter Alert------------------------->
+        <div class="alert alert-group alert-info alert-dismissible fade show alert-icon" role="alert"
+          style="display: none" id="undoDeletedMatterAlert">
+          <div class="alert-group-prepend">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-trash-restore"></i>
+            </span>
+          </div>
+          <div class="alert-content">
+            <strong id="undoDeletedMatterName">Matter recovered.</strong>
+          </div>
+
+          <button type="button" class="close" onclick="hideAlert('undoDeletedMatterAlert')">
+            <span class="alert-group-icon text-">
+              <i class="fas fa-times"></i>
+            </span>
+          </button>
+        </div>
+
+        <!--------------------------------------------- Selected Matter Card ---------------------------------------------->
+        <div id="selectedMatterCardID" class="card  " style="display: none">
+          <div class="card-header ">
+            <div class="row">
+              <div class="col-4" style="text-align:left">
+                <button type="button" class="btn btn-outline-primary btn-xs btn-icon-only" onclick="hideMatterInfo()">
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-times"></i>
+                  </span>
+                </button>
+              </div>
+              <div id="matterTitleDiv" class="col">
+                <h5 class="card-title mb-0 ">MATTER</h5>
+              </div>
+              <div class="col-3" style="text-align:right">
+                <button id="closeMatterBtnID" style="display:inline-block" type="button"
+                  class="btn btn-xs btn-outline-danger" onclick="closeMatter()">
+                  Close Matter
+                </button>
+                <button id="closeMatterBtnIDLoading" style="display:none" type="button"
+                  class="btn btn-xs btn-outline-danger btn-icon" disabled>
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                  <span class="btn-inner--text">Closing Matter</span>
+                </button>
+                <button id="reopenMatterBtnID" style="display:inline-block" type="button"
+                  class="btn btn-xs btn-outline-success" onclick="reopenMatter()">
+                  Reopen Matter
+                </button>
+                <button id="reopenMatterBtnIDLoading" style="display:none" type="button"
+                  class="btn btn-xs btn-outline-success btn-icon" disabled>
+                  <span class="btn-inner--icon">
+                    <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+                  <span class="btn-inner--text">Reopening Matter</span>
+                </button>
+              </div>
+              <div class="col-1" style="text-align:right">
+                <button id="openEditMatterModal" style="display:inline-block" type="button"
+                  class="btn btn-outline-primary btn-xs btn-icon-only" data-toggle="modal"
+                  data-target="#modal-add-edit-matter" onclick="onOpenMatterModal('edit')">
+                  <span class="btn-inner--icon">
+                    <i class="far fa-edit"></i>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <!-- Metadata: Closed, Type, Responsible Member, Description -->
+            <div class="row">
+              <div class="col" style="display:flex; justify-content: space-between">
+                <p id="matterStatusID"> Status: <b>N/A</b></p>
+                <p id="matterTypeID">Type: <b>N/A</b></p>
+                <p id="matterResponsibleMemberID"> Responsible Member: <b>Not Assigned</b></p>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col" style="text-align:left">
+                <p id="matterDescriptionID">Description: <b>This is a very in-depth description of the matter.</b></p>
+              </div>
+            </div><br>
+
+            <!-- Tasks Card -->
+            <div class="row">
+              <div class="col">
+                <div class="card  ">
+                  <div class="card-header " style="display:flex; justify-content:space-between">
+                    <h5 class="card-title mb-0 ">Active Tasks</h5>
+                    <button type="button" class="btn btn-sm btn-icon btn-sm btn-outline-primary" data-toggle="modal"
+                      data-target="#modal-add-edit-task" onclick="onOpenAddEditTaskModal('addFromMatter')">
+                      <span class="btn-inner--icon"><i class="fas fa-plus"></i></span>
+                      <span class="btn-inner--text">Add Task</span>
+                    </button>
+                  </div>
+                  <div class="card-body  " style="padding:0">
+                    <div id="matterTaskListDiv" style="padding:0; height: 12rem; overflow: auto">
+                      <ul class="list-group">
+                        <li class="list-group-item hoverable ">NO ACTIVE TASKS</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col">
+                <!--Matter Notes Accordion-->
+                <div id="matterNotesAccordion" class="accordion accordion-spaced">
+                  <!-- PlaceHolder to better format shown accordion -->
+                  <div style="display:none">
+                    <div class="card-header" data-toggle="collapse">
+                    </div>
+                    <div class="collapse">
+                    </div>
+                  </div>
+                  <!-- Matter Notes Accordion card -->
+                  <div class="card  " style="border-radius:0.25rem" onclick="setAssociatedNoteType('matter')">
+                    <div class="card-header py-4 " id="matterNotesHeading" style="margin-bottom:0"
+                      onclick="toggleAddNoteBtn('addMatterNote')" data-toggle="collapse" role="button"
+                      data-target="#matterNotesCollapse" aria-expanded="false" aria-controls="matterNotesCollapse">
+                      <div class="row">
+                        <div class="col-2" style="text-align:left">
+                          <button id="addMatterNote" class="btn btn-xs btn-outline-primary btn-icon-only"
+                            style="display:none" data-toggle="modal" data-target="#modal-note"
+                            onclick="toggleNoteType('add')">
+                            <span class="btn-inner--icon">
+                              <i class="fas fa-plus"></i>
+                            </span>
+                          </button>
+                        </div>
+                        <div class="col-8 my-auto">
+                          <h5 class="card-title mb-0 ">Matter Notes</h5>
+                        </div>
+                        <div class="col-2">
+
+                        </div>
+                      </div>
+                    </div>
+                    <div id="matterNotesCollapse" class="collapse" aria-labelledby="matterNotesHeading"
+                      data-parent="#matterNotesAccordion">
+                      <div class="card-body" style="padding:0">
+                        <div id="matterNoteListDiv" style="padding:0; height: 12rem; overflow: auto">
+                          <ul class="list-group">
+                            <li class="list-group-item hoverable ">NO NOTES</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="matterClientName" style="text-align:left">
+                  <h5>Client Name: N/A</h5>
+                </div>
+                <!--Client Notes Accordion-->
+                <div id="clientNotesAccordion" class="accordion accordion-spaced">
+                  <!-- PlaceHolder to better format shown accordion -->
+                  <div style="display:none">
+                    <div class="card-header" data-toggle="collapse">
+                    </div>
+                    <div class="collapse">
+                    </div>
+                  </div>
+                  <!-- Client Notes Accordion card -->
+                  <div class="card" style="border-radius:0.25rem" onclick="setAssociatedNoteType('client')">
+                    <div class="card-header py-4 " id="clientNotesHeading" style="margin-bottom:0"
+                      onclick="toggleAddNoteBtn('addClientNote')" data-toggle="collapse" role="button"
+                      data-target="#clientNotesCollapse" aria-expanded="false" aria-controls="clientNotesCollapse">
+                      <div class="row">
+                        <div class="col-2" style="text-align:left">
+                          <button id="addClientNote" class="btn btn-xs btn-outline-primary btn-icon-only"
+                            style="display:none" data-toggle="modal" data-target="#modal-note"
+                            onclick="toggleNoteType('add')">
+                            <span class="btn-inner--icon">
+                              <i class="fas fa-plus"></i>
+                            </span>
+                          </button>
+                        </div>
+                        <div class="col-8 my-auto">
+                          <h5 class="card-title mb-0 ">Client Notes</h5>
+                        </div>
+                        <div class="col-2">
+
+                        </div>
+                      </div>
+                    </div>
+                    <div id="clientNotesCollapse" class="collapse" aria-labelledby="clientNotesHeading"
+                      data-parent="#clientNotesAccordion">
+                      <div class="card-body" style="padding:0">
+                        <div id="clientNoteListDiv" style="padding:0; height: 12rem; overflow: auto">
+                          <ul class="list-group">
+                            <li class="list-group-item hoverable ">NO NOTES</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="col">
+                <!--task timeline card-->
+                <div class="card  ">
+                  <div class="card-header ">
+                    <h5 class=" h6 mb-0 ">Completed Tasks</h5>
+                  </div>
+                  <div class="card-body" style="max-height: 22rem; overflow: auto">
+                    <div id="taskTimeline" class="timeline timeline-one-side" data-timeline-content="axis"
+                      data-timeline-axis-style="dashed">
+                      <div class="timeline-block">
+                        <span class="timeline-step ">
+                        </span>
+                        <div class="timeline-content">
+                          <small class="text-muted font-weight-bold">No Tasks Completed</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- type specific info button-->
+                <button type="button" class="btn btn-sm btn-outline-primary" style="display:inline; width:100%"
+                  onclick="populateTypeInfoModal()" data-toggle="modal" data-target="#matterTypeInfoModal">
+                  View Type Specific Information
+                </button>
+              </div>
+
+            </div>
+          </div>
+          <div class="card-footer ">
+            <div class="row">
+              <div id="createdByDivMatter" class="col" style="text-align:left">
+                <p style="margin:0; font-size:0.7rem">Created By: N/A</p>
+              </div>
+              <div id="dateCreatedDivMatter" class="col">
+                <p style="margin:0; font-size:0.7rem">Date Created: N/A</p>
+              </div>
+              <div class="col">
+                <div id="deleteMatterButton" style=" margin-left:10%">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" onclick="deleteMatter()">
+                    <span class="btn-inner--icon">
+                      <i class="far fa-trash-alt"></i>
+                    </span>
+                    <span class="btn-inner--text">Delete Matter</span>
+                  </button>
+                </div>
+                <div id="deleteMatterButtonLoading" style="margin-left:10%; display:none">
+                  <button type="button" class="btn btn-outline-danger btn-xs btn-icon" disabled>
+                    <span class="btn-inner--icon">
+                      <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                    <span class="btn-inner--text">Deleting Matter</span>
+                  </button>
+                </div>
+                <!--p  style = "margin:0; font-size:0.7rem" > Delete Button</p-->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- End of Row-->
+    </div>
+  </div>
+
+  <!---------------------------------------- Footer ------------------------------------------------->
+
+  <!---------------------------------------- Modals ------------------------------------------------->
+  <!-- Modal -->
+  <div class="modal fade" id="matterTypeInfoModal" tabindex="-1" role="dialog"
+    aria-labelledby="matterTypeInfoModalLable" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header" style="text-align:center">
+          <h5 class="modal-title" id="matterTypeInfoModalLable">Type Info</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body" id="matterTypeInfoModalBody" style="text-align:left">
+        </div>
+      </div>
+    </div>
+  </div>
+  <?!= HtmlService.createHtmlOutputFromFile('Note-Modal').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Task-Modals').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Add-Edit-Matter-Modal').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Add-Matter-Type-Modal').getContent(); ?>
+
+  <!---------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+  <?!= HtmlService.createHtmlOutputFromFile('Footer').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('NoteJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('TaskJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('MattersJS').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('NavbarJS').getContent(); ?>
+
+</body>
+
+</html>

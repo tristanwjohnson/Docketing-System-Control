@@ -1,0 +1,130 @@
+<!-------------------------------------------------------- Navbar HTML ----------------------------------------------------->
+
+<div name="navbar">
+  <nav class="navbar navbar-horizontal navbar-expand-lg navbar-dark bg-primary-light px-0">
+    <div class="container-fluid">
+
+      <a class="navbar-brand">
+        <div class="logo-image" style="padding: 10px">
+          <img class="gb_ua gb_ra gb_va"
+            src="https://adibiip.com/wp-content/uploads/2020/02/AdibiIPGroup-SanFanciscoPatentAttorneysTrademarkLawyers-Logo-03.png"
+            role="img" style="height: 3rem">
+        </div>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-primary"
+        aria-controls="navbar-primary" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbar-primary">
+        <ul class="navbar-nav ml-lg-auto">
+          <li class="nav-item dropdown hoverable">
+            <a class="nav-link" href="#" id="navbar-primary_dropdown_1" role="button" data-toggle="dropdown"
+              aria-haspopup="true" aria-expanded="false">
+              <div class="media media-pill align-items-center">
+                <span class="avatar rounded-circle">
+
+                  <img id="navProfilPic" alt="Image placeholder">
+                </span>
+                <div class="ml-2 d-none d-lg-block">
+                  <span class="mb-0 text-sm  font-weight-bold" id="navUserName"></span>
+                </div>
+              </div>
+            </a>
+            <div id="navbarDropdownMenu"
+              class="dropdown-menu dropdown-menu-sm dropdown-menu-right dropdown-menu-arrow bg-light"
+              aria-labelledby="navbar-primary_dropdown_1">
+              <a id="navDashboard" class="dropdown-item" style="margin: .5rem">
+                <i class="fas fa-home"></i>Dashboard
+              </a>
+              <div class="dropdown-divider border-dark"></div>
+              <a id="navContacts" class="dropdown-item" style="margin: .5rem">
+                <i class="fas fa-id-card"></i>Contacts
+              </a>
+              <a id="navMatters" class="dropdown-item" style="margin: .5rem">
+                <i class="fas fa-gavel"></i>Matters
+              </a>
+              <a href="" id="navTeam" class="dropdown-item" style="margin: .5rem">
+                <i class="fas fa-users"></i>Team
+              </a>
+              <!--a href="" id="navTime" class="dropdown-item" style="margin: .5rem">
+                  <i class="fas fa-clock"></i>Time
+                </a-->
+              <!--a id="navReports" class="dropdown-item" style="margin: .5rem">
+                  <i class="fas fa-file"></i>Reports
+                </a-->
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<!-------------------------------------------------------- Confirm Clean Data Modal ----------------------------------------------------->
+
+
+<div class="modal fade" id="cleanDatabaseModal" tabindex="-1" role="dialog" aria-labelledby="cleanDatabaseModal"
+  aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-9">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-database" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="cleanDatabaseModalTitle">Are You Sure?</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="row">
+          <div class="col">
+            <p>By selecting yes, you are agreeing to permanently delete all of the invalid data in your database that is
+              at least 24 hours old.</p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <button type="button" class="btn btn-outline-primary btn-icon" style="padding: 0.6rem;"
+              data-dismiss="modal">
+              <span class="btn-inner--icon"><i class="fas fa-times"></i></span>
+              <span class="btn-inner--text">No, Keep My Data</span>
+            </button>
+          </div>
+          <div class="col">
+            <button id="cleanDataBtn" type="button" class="btn btn-outline-danger btn-icon" style="padding: 0.6rem;"
+              onclick="cleanDatabase()">
+              <span class="btn-inner--icon"><i class="far fa-trash-alt"></i></span>
+              <span class="btn-inner--text">Yes, Delete This Data</span>
+            </button>
+            <button id="cleanDataBtnLoading" type="button" class="btn btn-outline-danger btn-icon"
+              style="padding: 0.6rem; display:none" onclick="cleanDatabase()" disabled>
+              <span class="btn-inner--icon"><i class="fas fa-spinner fa-spin"></i></span>
+              <span class="btn-inner--text">Deleting Invalid Data</span>
+            </button>
+          </div>
+        </div><br>
+        <div class="row">
+          <div class="col">
+            <p id="cleanDataSuccessMessage" class="text-success" style="display:none">Data Cleaned Successfully</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

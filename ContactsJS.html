@@ -1,0 +1,1636 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+  $(function () {
+    showContacts();
+  });
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------   NAV FUNCTIONS   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  /**
+   * Function that resets nav selections as if no option on the navbar were selected.
+   * Intended to be called when any nav option is clicked, before showing the specific divs/elements necessary
+   */
+  function hideNavSelections() {
+    // Hide the divs
+    document.getElementById("contactDivID").style.display = "none";
+    document.getElementById("clientDivID").style.display = "none";
+    // hide each client list
+    document.getElementById("activeClientListID").style.display = "none";
+    document.getElementById("inReviewClientListID").style.display = "none";
+    // Reset the nav options style
+    document.getElementById("clientNav").className = "btn bg-light ";
+    document.getElementById("contactNav").className = "btn bg-light ";
+    document.getElementById("inReviewNav").className = "btn bg-light ";
+    // Hide the 'selected' cards
+    document.getElementById("selectedClientCardID").style.display = "none";
+    document.getElementById("selectedPersonCardID").style.display = "none";
+    document.getElementById("selectedEntityCardID").style.display = "none";
+    //document.getElementById("selectedInReviewCardID").style.display = "none";
+    // Hide the search bars
+    document.getElementById("peopleListSearchBar").style.display = "none";
+    document.getElementById("entitiesListSearchBar").style.display = "none";
+    document.getElementById("activeListSearchBar").style.display = "none";
+    document.getElementById("inReviewListSearchBar").style.display = "none";
+    // Hide the (undo) deleted alerts
+    document.getElementById("deletedClientAlert").style.display = "none";
+    document.getElementById("undoDeletedClientAlert").style.display = "none";
+    document.getElementById("deletedPersonAlert").style.display = "none";
+    document.getElementById("undoDeletedPersonAlert").style.display = "none";
+    document.getElementById("deletedEntityAlert").style.display = "none";
+    document.getElementById("undoDeletedEntityAlert").style.display = "none";
+    // Hide the add contact / propose client buttons
+    document.getElementById("addContactNav").style.display = "none";
+    document.getElementById("proposeClientNav").style.display = "none";
+  }
+
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------   CONTACTS TAB SELECTED   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  /**
+   * Show contacts Div - shows list of people and entities
+   */
+  function showContacts() {
+    // handle the style
+    hideNavSelections();
+    document.getElementById("contactDivID").style.display = "block";
+    document.getElementById("contactNav").className = "btn bg-light-dark";
+    document.getElementById("addContactNav").style.display = "inline-block";
+    // sort the persons alphabetically by last name
+    var personList = Object.values(jsonData.persons).sort(function (d1, d2) { return d1["LastName"].localeCompare(d2["LastName"]); }); // list of persons sorted alphabetically by LastName
+
+    // populate person string with HTML to show list of clients
+    var personString = "";
+    var listOption;
+    for (var i = 0; i < personList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id =' + personList[i].ID + ' style="text-align:left" onclick = "showPersonInfo(\'' + personList[i].ID + '\')">' + personList[i].LastName + ", " + personList[i].FirstName + '</li>';
+      personString += listOption;
+    }
+    //append list options in HTML dynamically
+    $("div[id='personListDiv']").find('li').remove().end().append($(personString));
+
+    // sort the entities alphabetically by name
+    var entityList = Object.values(jsonData.entities).sort(function (d1, d2) { return d1["Name"].localeCompare(d2["Name"]); }); // list of entities sorted alphabetically by Name
+
+    // populate entity string with HTML to show list of entities
+    var entityString = "";
+    var listOption = "";
+    for (var i = 0; i < entityList.length; i++) {
+      listOption = '<li class="list-group-item  hoverable" id =' + entityList[i].ID + ' style="text-align:left" onclick = "showEntityInfo(\'' + entityList[i].ID + '\')">' + entityList[i].Name + '</li>';
+      entityString += listOption;
+    }
+
+    // append entityString in HTML dynamically
+    $("div[id='entityListDiv']").find('li').remove().end().append($(entityString));
+  }
+
+  // ------------------------------------------------------------------- Search Contacts ---------------------------------------------------------------------
+
+
+  /**
+   * Toggle search bar to search list of a contact list
+   *
+   * @param {string} type: the type of the contact list we are toggling the search bar for - people or entities
+   */
+  function toggleContactSearch(type) {
+    var searchBar = document.getElementById(type + "ListSearchBar");
+    //clear search value
+    document.getElementById(type + "ListSearchValue").value = null;
+    if (searchBar.style.display == "none") { //searchBar is hidden
+      searchBar.style.display = "inline";
+    } else { //searchBar is shown
+      searchBar.style.display = "none";
+      // reset list
+      showContacts();
+    }
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the people list with only people whose names include the term
+   */
+  function searchPeopleList() {
+    // Hide the person/entity/client info cards
+    document.getElementById("selectedClientCardID").style.display = "none";
+    document.getElementById("selectedPersonCardID").style.display = "none";
+    document.getElementById("selectedEntityCardID").style.display = "none";
+    // Get the search term
+    var searchTerm = document.getElementById("peopleListSearchValue").value;
+    // Get the people from JSON
+    var people = Object.values(jsonData.persons);
+    var refinedList = [];
+    // Iterate through the people and refine the list to people whose names include the search term
+    var person;
+    for (var i = 0; i < people.length; i++) {
+      person = people[i];
+      if (person["FirstName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(person);
+      } else if (person["LastName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(person);
+      }
+    }
+    // Alphabetize the search results
+    refinedList.sort(function (p1, p2) { return p1["LastName"].localeCompare(p2["LastName"]) });
+    // Replace the unassociated people with the refined list
+    var peopleString = "";
+    var listOption;
+    for (var i = 0; i < refinedList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id =' + refinedList[i].ID;
+      listOption += ' style="text-align:left" onclick = "showPersonInfo(\'' + refinedList[i].ID + '\')">' + refinedList[i].LastName + ", " + refinedList[i].FirstName + '</li>';
+      peopleString += listOption;
+    }
+    //append searchResults in HTML
+    $("div[id='personListDiv']").find('li').remove().end().append($(peopleString));
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the entities list with only entities whose names include the term
+   */
+  function searchEntitiesList() {
+    // Hide the person/entity/client info cards
+    document.getElementById("selectedClientCardID").style.display = "none";
+    document.getElementById("selectedPersonCardID").style.display = "none";
+    document.getElementById("selectedEntityCardID").style.display = "none";
+    // Get the search term
+    var searchTerm = document.getElementById("entitiesListSearchValue").value;
+    // Get the people from JSON
+    var entities = Object.values(jsonData.entities);
+    var refinedList = [];
+    // Iterate through the entities and refine the list to entities whose names include the search term
+    var entity;
+    for (var i = 0; i < entities.length; i++) {
+      entity = entities[i];
+      if (entity["Name"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(entity);
+      }
+    }
+    // Alphabetize the search results
+    refinedList.sort(function (e1, e2) { return e1["Name"].localeCompare(e2["Name"]) });
+    // Replace the unassociated people with the refined list
+    var entitiesString = "";
+    var listOption;
+    for (var i = 0; i < refinedList.length; i++) {
+      listOption = '<li class="list-group-item hoverable " id =' + refinedList[i].ID;
+      listOption += ' style="text-align:left" onclick = "showEntityInfo(\'' + refinedList[i].ID + '\')">' + refinedList[i].Name + '</li>';
+      entitiesString += listOption;
+    }
+    //append searchResults in HTML
+    $("div[id='entityListDiv']").find('li').remove().end().append($(entitiesString));
+  }
+  // ---------------------------------------------------------------- Show/Hide Person Info ------------------------------------------------------------------
+
+
+  /**
+   * Show specific person information
+   *
+   * @param {string} personID: the id of the person we wish to show the information of
+   */
+  function showPersonInfo(personID) {
+    // show person as selected in list and unselect previous contact
+    var prevSelectedID = document.getElementById("selectedPersonID").value || document.getElementById("selectedEntityID").value;
+    if (prevSelectedID) {
+      var selectedElem = document.getElementById(prevSelectedID);
+      if (selectedElem) {
+        selectedElem.className = "list-group-item hoverable";
+      }
+    }
+    document.getElementById(personID).className = "list-group-item hoverable bg-light-dark text-dark";
+
+    // hide the entity information card thats currently open
+    document.getElementById("selectedEntityCardID").style.display = "none";
+
+    // hide the success undo alerts 
+    document.getElementById("undoDeletedPersonAlert").style.display = "none";
+    document.getElementById("undoDeletedEntityAlert").style.display = "none";
+
+    // get person from JSON
+    var person = jsonData.persons[personID];
+
+    // set the hidden tag to store the person ID
+    document.getElementById("selectedPersonID").value = personID;
+    document.getElementById("associatedNoteType").value = "person";
+    // set the hidden tag to store the entityID to be null
+    document.getElementById("selectedEntityID").value = null;
+
+    //Update button display based on user privileges
+    updateContactCardPrivileges(person["CreatedBy"], "Person");
+
+    // show Title to be person name
+    var nameStr = person.FirstName;
+    if (person.MiddleName) {
+      nameStr += " " + person.MiddleName;
+    }
+    nameStr += " " + person.LastName;
+    var titleStr = '<h5 class="card-title mb-0 ">' + nameStr + '    <a target="_blank" href="https://drive.google.com/drive/folders/' + person.FolderID + '"><i class="fab fa-google-drive"></i></a></h5>';
+    $("div[id='personTitleDiv']").find('h5').remove().end().append($(titleStr));
+    // add link to person folder
+    var folderID = person.FolderID;
+
+
+    // show letter name
+    var nameStr = '<p style = "text-align: left; margin-bottom:0">Letter Name: <b>' + (person.LetterName || "") + '</b></p>';
+    $("div[id='personLetterNameDiv']").find('p').remove().end().append($(nameStr));
+    // show contact info - phone number and email
+    var phoneStr = '<p style = "text-align: left; margin-bottom:0">Work Phone: <b>' + (person.WorkPhone || "") + "</b></p><p style = 'text-align: left; margin-bottom:0'>" + "Personal Phone: <b>" + (person.PersonalPhone || "") + '</b></p>';
+    var emailStr = '<p style = "text-align: left">Email: <b>' + (person.Email || "") + '</b></p>';
+    $("div[id='personPhoneDiv']").find('p').remove().end().append($(phoneStr));
+    $("div[id='personEmailDiv']").find('p').remove().end().append($(emailStr));
+
+    // show address and mailing address
+    var address = jsonData.addresses[person.AddressID];
+    var addressStr = '<p style = "text-align: left; margin-bottom:0"> Address:<br></p>';
+    var mailingAddress = jsonData.addresses[person.MailingAddressID];
+    var mailingStr = '<p style = "text-align: left; margin-bottom:0">Mailing Address:<br></p>';
+    if (address) {
+      addressStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (address.Address || "-No Street Address-") + '</b></p>';
+      addressStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (address.City || "-No City-") + ', ' + (address.State || "-No State-") + ', ' + (address.Country || "-No Country-") + '</b></p>';
+      addressStr += '<p style = "text-align: left;"><b>' + (address.ZipCode || "-No ZipCode-") + '</b></p>';
+    }
+    if (mailingAddress) {
+      mailingStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (mailingAddress.Address || "-No Street Address-") + '</b></p>';
+      mailingStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (mailingAddress.City || "-No City-") + ', ' + (mailingAddress.State || "-No State-") + ', ' + (mailingAddress.Country || "-No Country-") + '</b></p>';
+      mailingStr += '<p style = "text-align: left;"><b>' + (mailingAddress.ZipCode || "-No ZipCode-") + '</b></p>';
+    } else {
+      mailingStr += '<p style = "text-align: left;"><b>Same</b></p>';
+    }
+    $("div[id='personAddressDiv']").find('p').remove().end().append($(addressStr));
+    $("div[id='personMailingDiv']").find('p').remove().end().append($(mailingStr));
+
+    // add notes 
+    var notesStr = getNoteStr(person.NoteID);
+    $("div[id='personNoteListDiv']").find('li').remove().end().append($(notesStr));
+
+    // show creation information
+
+    var creatorStr = "<p style = 'margin:0; font-size:0.7rem'> Created By: <b>" + person.CreatedBy + "</b></p><p style = 'margin:0; font-size:0.7rem'>Last Modified By: <b>" + person.ModifiedBy + "</b></p>";
+    // pull date and convert it to a readable formate
+    var created = new Date(person.DateCreated);
+    var dateCreated = created.toDateString();
+    var modified = new Date(person.DateModified);
+    var lastModified = modified.toDateString();
+    var dateStr = "<p style = 'margin:0; font-size:0.7rem'> Date Created: <b>" + dateCreated + "</b></p> <p style = 'margin:0; font-size:0.7rem'>Last Modified: <b>" + lastModified + "</b></p>";
+    $("div[id='createdByDivPerson']").find('p').remove().end().append($(creatorStr));
+    $("div[id='dateCreatedDivPerson']").find('p').remove().end().append($(dateStr));
+
+    // actually show this div after all information has been added
+    document.getElementById("selectedPersonCardID").style.display = "block";
+  }
+
+  /**
+   * Function to hide the person info window 
+   */
+  function hidePersonInfo() {
+    //hide info card
+    document.getElementById("selectedPersonCardID").style.display = "none";
+
+    //unselect person
+    var selectedID = document.getElementById("selectedPersonID").value;
+    document.getElementById(selectedID).className = "list-group-item hoverable ";
+
+  }
+
+  // --------------------------------------------------------------- Show/Hide Entity Info ---------------------------------------------------------------------------------
+
+  /**
+   * Show specific Entity information
+   *
+   * @param {string} entityID: the id of the entity we wish to show the information of
+   */
+  function showEntityInfo(entityID) {
+    // show entity as selected in list and unselect previous contact
+    var prevSelectedID = document.getElementById("selectedPersonID").value || document.getElementById("selectedEntityID").value;
+    if (prevSelectedID) {
+      var selectedElem = document.getElementById(prevSelectedID);
+      if (selectedElem) {
+        selectedElem.className = "list-group-item hoverable ";
+      }
+    }
+    document.getElementById(entityID).className = "list-group-item hoverable bg-light-dark text-dark";
+
+    // hide open person infomation card
+    document.getElementById("selectedPersonCardID").style.display = "none";
+
+    // hide the success undo alerts 
+    document.getElementById("undoDeletedPersonAlert").style.display = "none";
+    document.getElementById("undoDeletedEntityAlert").style.display = "none";
+
+
+    // get entity from JSON
+    var entity = jsonData.entities[entityID];
+
+    // set the hidden tag to store the entity ID
+    document.getElementById("selectedEntityID").value = entityID;
+    document.getElementById("associatedNoteType").value = "entity";
+    // set the hidden tag to store the person ID as null
+    document.getElementById("selectedPersonID").value = null;
+
+    // update display based on user privileges 
+    updateContactCardPrivileges(entity["CreatedBy"], "Entity");
+
+    // show Title to be entity name
+    var nameStr = entity.Name;
+    var titleStr = '<h5 class="card-title mb-0 ">' + nameStr + '    <a target="_blank" href="https://drive.google.com/drive/folders/' + entity.FolderID + '"><i class="fab fa-google-drive"></i></a></h5>';
+    $("div[id='entityTitleDiv']").find('h5').remove().end().append($(titleStr));
+    // add link to entity folder
+    var folderID = entity.FolderID;
+
+    // add notes 
+    var notesStr = getNoteStr(entity.NoteID);
+    $("div[id='entityNoteListDiv']").find('li').remove().end().append($(notesStr));
+
+    // show metadata - type and state of incorporation
+    var typeStr = '<p style = "margin:0; font-size:0.7rem; text-align: left">Type: ' + (entity.Type || "") + '</b></p>'
+    var stateOfIncorpStr = '<p style = "font-size:0.7rem; text-align: left">State Of Incorporation: ' + (entity.StateOfIncorporation || "") + '</b></p>'
+    $("div[id='entityTypeDiv']").find('p').remove().end().append($(typeStr));
+    $("div[id='entityStateOfIncorpDiv']").find('p').remove().end().append($(stateOfIncorpStr));
+
+    // show associated people if any exist
+    var peopleNameStr = ""
+    if (entity.PersonID) {
+      var AssocPeopleIDList = entity.PersonID.split(',');
+      var person;
+      for (var i = 0; i < AssocPeopleIDList.length; i++) {
+        person = jsonData.persons[AssocPeopleIDList[i]];
+        if (person) {
+          // link to the folder id of these people
+          peopleNameStr += "<a target='_blank' href='https://drive.google.com/drive/folders/" + person["FolderID"] + "'>" + person.FirstName + " " + person.LastName + "</a>, ";
+        }
+      }
+    }
+    if (peopleNameStr == "") { // if there are no people, say so
+      peopleNameStr = "<p style = 'text-align: left; margin-bottom:0'>No Associated People</p>";
+    } else {
+      peopleNameStr = '<p style = "text-align: left">Associated People: <b>' + peopleNameStr.slice(0, peopleNameStr.length - 2) + '</b></p>';
+    }
+    $("div[id='entityAssocPeopleDiv']").find('p').remove().end().append($(peopleNameStr));
+
+    // show contact info - phone and email
+    var phoneStr = '<p style = "text-align: left; margin-bottom:0">Phone: <b>' + (entity.Phone || "") + '</b></p>';
+    var emailStr = '<p style = "text-align: left">Email: <b>' + (entity.Email || "") + '</b></p>';
+    $("div[id='entityPhoneDiv']").find('p').remove().end().append($(phoneStr));
+    $("div[id='entityEmailDiv']").find('p').remove().end().append($(emailStr));
+
+    // show address and mailing address
+    var address = jsonData.addresses[entity.AddressID];
+    var addressStr = '<p style = "text-align: left; margin-bottom:0"> Address:<br></p>';
+    var mailingAddress = jsonData.addresses[entity.MailingAddressID];
+    var mailingStr = '<p style = "text-align: left; margin-bottom:0">Mailing Address:<br></p>';
+    if (address) {
+      addressStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (address.Address || "-No Street Address-") + '</b></p>';
+      addressStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (address.City || "-No City-") + ', ' + (address.State || "-No State-") + ', ' + (address.Country || "-No Country-") + '</b></p>';
+      addressStr += '<p style = "text-align: left;"><b>' + (address.ZipCode || "-No ZipCode-") + '</b></p>';
+    }
+    if (mailingAddress) {
+      mailingStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (mailingAddress.Address || "-No Street Address-") + '</b></p>';
+      mailingStr += '<p style = "text-align: left; margin-bottom:0"><b>' + (mailingAddress.City || "-No City-") + ', ' + (mailingAddress.State || "-No State-") + ', ' + (mailingAddress.Country || "-No Country-") + '</b></p>';
+      mailingStr += '<p style = "text-align: left;"><b>' + (mailingAddress.ZipCode || "-No ZipCode-") + '</b></p>';
+    } else {
+      mailingStr += '<p style = "text-align: left;"><b>Same</b></p>';
+    }
+    $("div[id='entityAddressDiv']").find('p').remove().end().append($(addressStr));
+    $("div[id='entityMailingDiv']").find('p').remove().end().append($(mailingStr));
+
+    // show creation information
+    var creatorStr = "<p style = 'margin:0; font-size:0.7rem'> Created By: <b>" + entity.CreatedBy + "</b></p><p style = 'margin:0; font-size:0.7rem'>Last Modified By: <b>" + entity.ModifiedBy + "</b></p>";
+
+    var created = new Date(entity.DateCreated);
+    var modified = new Date(entity.DateModified);
+    var dateCreated = created.toDateString();
+    var lastModified = modified.toDateString();
+    var dateStr = "<p style = 'margin:0; font-size:0.7rem'> Date Created: <b>" + dateCreated + "</b></p> <p style = 'margin:0; font-size:0.7rem'>Last Modified: <b>" + lastModified + "</b></p>";
+    $("div[id='createdByDivEntity']").find('p').remove().end().append($(creatorStr));
+    $("div[id='dateCreatedDivEntity']").find('p').remove().end().append($(dateStr));
+
+    // actually show this div after card is filled with information
+    document.getElementById("selectedEntityCardID").style.display = "block";
+  }
+
+  /**
+  * Function to hide the entity info window
+  */
+  function hideEntityInfo() {
+    document.getElementById("selectedEntityCardID").style.display = "none";
+
+    //unselect entity
+    var selectedID = document.getElementById("selectedEntityID").value;
+    document.getElementById(selectedID).className = "list-group-item hoverable ";
+  }
+
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ------------------------------------------------------------------   OPENING THE ADD/EDIT MODAL   -------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  /**
+   * Function that toggles between displaying different fields in the add/edit contact modal
+   * 
+   * @param {string} typeStr: represents the type of operation about to take place (ie adding a person, editing an entity, etc.)
+   */
+  function toggleContactType(typeStr) {
+    // hide any invalid field messages and success messages
+    document.getElementById("addedContactInvalidFieldsMessage").style.display = "none";
+    hideContactSuccessMessages();
+    if (typeStr == 'person') { // we are adding a new person
+      clearPersonFields();
+      // change the title of the modal
+      document.getElementById("modalTitle").innerHTML = '<h6 class="mb-0 ">Add Person</h6>';
+      // show the add person div and hide the add entity div
+      document.getElementById("addEntityDiv").style.display = "none";
+      document.getElementById("addPersonDiv").style.display = "block";
+      document.getElementById("contactRadioButtonDiv").style.display = "block";
+      // select the person button, unselect the entity button
+      document.getElementById("personRadio").className = "btn btn-primary text-white";
+      document.getElementById("entityRadio").className = "btn bg-light text-dark";
+      // show add person btn and hide all other buttons
+      document.getElementById("addEntityBtnID").style.display = "none";
+      document.getElementById("editPersonBtnID").style.display = "none";
+      document.getElementById("editEntityBtnID").style.display = "none";
+      document.getElementById("addPersonBtnID").style.display = "block";
+    } else if (typeStr == 'entity') { // we are adding a new entity
+      clearEntityFields();
+      // change the title of the modal
+      document.getElementById("modalTitle").innerHTML = '<h6 class="mb-0 ">Add Entity</h6>';
+      // hide the add person div and show the add entity div
+      document.getElementById("addPersonDiv").style.display = "none";
+      document.getElementById("addEntityDiv").style.display = "block";
+      document.getElementById("contactRadioButtonDiv").style.display = "block";
+      // select the entity button, unselect the person button
+      document.getElementById("personRadio").className = "btn bg-light text-dark";
+      document.getElementById("entityRadio").className = "btn btn-primary text-white";
+      // show add Entity btn and hide add person btn
+      document.getElementById("addPersonBtnID").style.display = "none";
+      document.getElementById("editPersonBtnID").style.display = "none";
+      document.getElementById("editEntityBtnID").style.display = "none";
+      document.getElementById("addEntityBtnID").style.display = "block";
+      // update kanban
+      populateEntityPeopleKanban([]);
+    } else if (typeStr == 'editPerson') { // we are editing an existing person
+      clearPersonFields();
+      // change the title of the modal
+      document.getElementById("modalTitle").innerHTML = '<h6 class="mb-0 ">Edit Person</h6>';
+      // hide the person/entity radio buttons 
+      document.getElementById("contactRadioButtonDiv").style.display = "none";
+      // show edit person btn and hide all other buttons
+      document.getElementById("addEntityBtnID").style.display = "none";
+      document.getElementById("addPersonBtnID").style.display = "none";
+      document.getElementById("editEntityBtnID").style.display = "none";
+      document.getElementById("editPersonBtnID").style.display = "block";
+      // show the person div and hide the entity div
+      document.getElementById("addEntityDiv").style.display = "none";
+      document.getElementById("addPersonDiv").style.display = "block";
+      // fill in the person div
+      fillInPersonDiv();
+    } else if (typeStr == 'editEntity') { // we are editing an existing entity
+      clearEntityFields();
+      // change the title of the modal
+      document.getElementById("modalTitle").innerHTML = '<h6 class="mb-0 ">Edit Entity</h6>';
+      // hide the person/entity radio buttons 
+      document.getElementById("contactRadioButtonDiv").style.display = "none";
+      // show edit entity btn and hide all other buttons
+      document.getElementById("addEntityBtnID").style.display = "none";
+      document.getElementById("addPersonBtnID").style.display = "none";
+      document.getElementById("editPersonBtnID").style.display = "none";
+      document.getElementById("editEntityBtnID").style.display = "block";
+      // hide the person div and show the entity div
+      document.getElementById("addPersonDiv").style.display = "none";
+      document.getElementById("addEntityDiv").style.display = "block";
+      // fill in the entity div
+      fillInEntityDiv();
+    } else { // type = init, we are adding a new contact, let the user choose either person or entity
+      // change the title of the modal
+      document.getElementById("modalTitle").innerHTML = '<h6 class="mb-0 ">Add Contact</h6>';
+      // hide both divs 
+      document.getElementById("addPersonDiv").style.display = "none";
+      document.getElementById("addEntityDiv").style.display = "none";
+      document.getElementById("contactRadioButtonDiv").style.display = "block";
+      // unselect both buttons
+      document.getElementById("personRadio").className = "btn bg-light";
+      document.getElementById("entityRadio").className = "btn bg-light";
+      // hide add/edit buttons
+      document.getElementById("addEntityBtnID").style.display = "none";
+      document.getElementById("addPersonBtnID").style.display = "none";
+      document.getElementById("editPersonBtnID").style.display = "none";
+      document.getElementById("editEntityBtnID").style.display = "none";
+    }
+  }
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ------------------------------------------------------------------------   ADDING A CONTACT   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  // -------------------------------------------------------------------------- Adding a person ------------------------------------------------------------------------
+
+  /**
+   * Function to add a person and their address (and potentially a mailing address) to the database.
+   */
+  function addPerson() {
+    // hide the add person button and show the loading button
+    document.getElementById("addPersonBtnID").style.display = "none";
+    document.getElementById("addPersonBtnIDLoading").style.display = "block";
+    // Instantiate the dictionaries that will be used to create the address and person (pull this info right away to avoid user's changing it)
+    var infoList = getPersonInformation();
+    if (!infoList) { // check for invalid inputs
+      // hide the loading button and show the add person button
+      document.getElementById("addPersonBtnIDLoading").style.display = "none";
+      document.getElementById("addPersonBtnID").style.display = "block";
+      // show the error message
+      document.getElementById("addedContactInvalidFieldsMessage").style.display = "block";
+      return;
+    } else {
+      // hide the error message
+      document.getElementById("addedContactInvalidFieldsMessage").style.display = "none";
+    }
+    // unpack the infoList
+    var person = infoList[0];
+    var address = infoList[1];
+    var mailingAddress = infoList[2];
+    // call the server to actually create this person and their address(es)
+    google.script.run.withSuccessHandler(onSuccessAddPerson).withFailureHandler(onFailAddPerson).addPerson(address, mailingAddress, person);
+  }
+
+  /**
+   * onSuccess function thats called after a person (and their address(es)) are successfully added to the database.
+   *
+   * @param {object} addedRows: a list of dictionaries of the added rows [address, mailingAddress (may be null), person]
+   */
+  function onSuccessAddPerson(addedRows) {
+    // update the json data
+    var address = addedRows[0];
+    var mailingAddress = addedRows[1];
+    var person = addedRows[2];
+    jsonData.addresses[address["ID"]] = address;
+    if (mailingAddress) {
+      jsonData.addresses[mailingAddress["ID"]] = mailingAddress;
+    }
+    jsonData.persons[person["ID"]] = person;
+    // update the contacts list
+    showContacts();
+    // clear the form values
+    clearPersonFields();
+    // hide the loading button and show the add person button
+    document.getElementById("addPersonBtnIDLoading").style.display = "none";
+    document.getElementById("addPersonBtnID").style.display = "block";
+    // show a success alert?
+    document.getElementById("addedPersonSuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFail function to be called when the server is unable to add a new person
+   */
+  function onFailAddPerson(err) {
+    // hide the loading button and show the add person button
+    document.getElementById("addPersonBtnIDLoading").style.display = "none";
+    document.getElementById("addPersonBtnID").style.display = "block";
+    alert("Unable to add this person to the database. Please refresh this page. " + err);
+  }
+
+  // -------------------------------------------------------------------------- Adding an entity -------------------------------------------------------------------
+
+  /**
+   * Function to add an entity and their address (and potentially a mailing address) to the database.
+   */
+  function addEntity() {
+    // hide the add entity button and show the loading button
+    document.getElementById("addEntityBtnID").style.display = "none";
+    document.getElementById("addEntityBtnIDLoading").style.display = "block";
+    // Instantiate the dictionaries that will be used to create the address and entity (pull this info right away to avoid user's changing it)
+    var infoList = getEntityInformation();
+    // null if needed fields are left blank
+    if (!infoList) {
+      // hide the loading button and show the add entity button
+      document.getElementById("addEntityBtnIDLoading").style.display = "none";
+      document.getElementById("addEntityBtnID").style.display = "block";
+      // show the error message
+      document.getElementById("addedContactInvalidFieldsMessage").style.display = "block";
+      return;
+    } else {
+      // hide the error message
+      document.getElementById("addedContactInvalidFieldsMessage").style.display = "none";
+    }
+    var entity = infoList[0];
+    var address = infoList[1];
+    var mailingAddress = infoList[2];
+    // store this information in the database
+    google.script.run.withSuccessHandler(onSuccessAddEntity).withFailureHandler(onFailAddEntity).addEntity(address, mailingAddress, entity, jsonData.persons);
+  }
+
+  /**
+   * onSuccess function thats called after an entity (and their address(es)) are successfully added to the database.
+   *
+   * @param {object} addedRows: a list of dictionaries of the added rows [address, mailingAddress (may be null), entity]
+   */
+  function onSuccessAddEntity(addedRows) {
+    // update the json data
+    var address = addedRows[0];
+    var mailingAddress = addedRows[1];
+    var entity = addedRows[2];
+    jsonData.addresses[address["ID"]] = address;
+    if (mailingAddress) {
+      jsonData.addresses[mailingAddress["ID"]] = mailingAddress;
+    }
+    jsonData.entities[entity["ID"]] = entity;
+    // update the contacts list
+    showContacts();
+    // clear the form values
+    clearEntityFields();
+    // hide the loading button and show the add entity button
+    document.getElementById("addEntityBtnIDLoading").style.display = "none";
+    document.getElementById("addEntityBtnID").style.display = "block";
+    // show a success alert
+    document.getElementById("addedEntitySuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFail function to be called when the server is unable to add a new person
+   */
+  function onFailAddEntity(err) {
+    // hide the loading button and show the add person button
+    document.getElementById("addPersonBtnIDLoading").style.display = "none";
+    document.getElementById("addPersonBtnID").style.display = "block";
+    alert("Unable to add this entity to the database. Please refresh this page. " + err);
+  }
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------   HELPER FUNCTIONS FOR ADDING/EDITING A CONTACT   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  // --------------------------------------------------   EDITING A CONTACT   ----------------------------------------------------------------------
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  // ----------------------------------------------------- Editing a person --------------------------------------------------------------------------------
+
+  /**
+   * Function to edit a person and their address (and potentially a mailing address) in the database.
+   */
+  function editPerson() {
+    // hide the edit person button and show the loading button
+    document.getElementById("editPersonBtnID").style.display = "none";
+    document.getElementById("editPersonBtnIDLoading").style.display = "block";
+    var person, address, mailingAddress;
+    // Get the person information from the html
+    var infoList = getPersonInformation();
+    // infoList will be false if the information that the user provided was invalid
+    if (!infoList) {
+      // hide the loading button and show the edit person button
+      document.getElementById("editPersonBtnIDLoading").style.display = "none";
+      document.getElementById("editPersonBtnID").style.display = "block";
+      // show the error message
+      document.getElementById("addedContactInvalidFieldsMessage").style.display = "block";
+      // return so that no changes are made
+      return;
+    }
+    person = infoList[0];
+    address = infoList[1];
+    mailingAddress = infoList[2];
+    // pull the personID from the hidden tag, and the address and mailing address IDs from jsonData
+    var personID = document.getElementById("selectedPersonID").value;
+    person["ID"] = personID;
+    address["ID"] = jsonData.persons[personID]["AddressID"];
+    if (mailingAddress) {
+      mailingAddress["ID"] = jsonData.persons[personID]["MailingAddressID"];
+    }
+    //pass along folderID 
+    person["FolderID"] = jsonData.persons[personID]["FolderID"];
+
+    // Pass along the notes of the previous person
+    person["NoteID"] = jsonData.persons[personID]["NoteID"];
+    // have the server save these edits
+    google.script.run.withSuccessHandler(onSuccessEditPerson).withFailureHandler(onFailEditPerson).editPerson(address, mailingAddress, person);
+  }
+
+  /**
+   * onSuccess function thats called after a person (and their address(es)) are successfully edited in the database.
+   *
+   * @param {object} editedRows: a list of dictionaries of the added rows [address, mailingAddress (may be null), person]
+   */
+  function onSuccessEditPerson(editedRows) {
+    // update the json data 
+    var address = editedRows[0];
+    var mailingAddress = editedRows[1];
+    var person = editedRows[2];
+    jsonData.addresses[address["ID"]] = address;
+    if (mailingAddress) {
+      jsonData.addresses[mailingAddress["ID"]] = mailingAddress;
+    }
+    jsonData.persons[person["ID"]] = person;
+    // update the contacts list
+    showContacts();
+    // hide the loading button and show the edit person button
+    document.getElementById("editPersonBtnIDLoading").style.display = "none";
+    document.getElementById("editPersonBtnID").style.display = "block";
+    // show a success message
+    document.getElementById("editedPersonSuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFail function to be called when the server is unable to edit a person
+   */
+  function onFailEditPerson(err) {
+    // hide the loading button and show the edit person button
+    document.getElementById("editPersonBtnIDLoading").style.display = "none";
+    document.getElementById("editPersonBtnID").style.display = "block";
+    alert("Unable to edit this person in the database. Please refresh this page. " + err);
+  }
+
+  // ------------------------------------------------------- Editing an entity -----------------------------------------------------------------
+
+  /**
+   * Function to edit an entity and their address (and potentially a mailing address) in the database.
+   */
+  function editEntity() {
+    // hide the edit entity button and show the loading button
+    document.getElementById("editEntityBtnID").style.display = "none";
+    document.getElementById("editEntityBtnIDLoading").style.display = "block";
+    var entity, address, mailingAddress;
+    // Get the entity information from the html
+    var infoList = getEntityInformation();
+    // infoList will be false if the information that the user provided was invalid
+    if (!infoList) {
+      // hide the loading button and show the edit entity button
+      document.getElementById("editEntityBtnIDLoading").style.display = "none";
+      document.getElementById("editEntityBtnID").style.display = "block";
+      // show the error message
+      document.getElementById("addedContactInvalidFieldsMessage").style.display = "block";
+      return;
+    }
+    entity = infoList[0];
+    address = infoList[1];
+    mailingAddress = infoList[2];
+    // pull the entityID from the hidden tag, and the address and mailing address IDs from JSON
+    var entityID = document.getElementById("selectedEntityID").value;
+    entity["ID"] = entityID;
+    address["ID"] = jsonData.entities[entityID]["AddressID"];
+    if (mailingAddress) {
+      mailingAddress["ID"] = jsonData.entities[entityID]["MailingAddressID"];
+    }
+    //pass along folderID 
+    entity["FolderID"] = jsonData.entities[entityID]["FolderID"];
+    // Pass along the notes of the previous entity
+    entity["NoteID"] = jsonData.entities[entityID]["NoteID"];
+    // have the server save these edits
+    google.script.run.withSuccessHandler(onSuccessEditEntity).withFailureHandler(onFailEditEntity).editEntity(address, mailingAddress, entity);
+  }
+
+  /**
+   * onSuccess function thats called after an entity (and their address(es)) are successfully edited in the database.
+   *
+   * @param {object} editedRows: a list of dictionaries of the added rows [address, mailingAddress (may be null), entity]
+   */
+  function onSuccessEditEntity(editedRows) {
+    // update the json data 
+    var address = editedRows[0];
+    var mailingAddress = editedRows[1];
+    var entity = editedRows[2];
+    jsonData.addresses[address["ID"]] = address;
+    if (mailingAddress) {
+      jsonData.addresses[mailingAddress["ID"]] = mailingAddress;
+    }
+    jsonData.entities[entity["ID"]] = entity;
+    // update the contacts list
+    showContacts();
+    // hide the loading button and show the edit entity button
+    document.getElementById("editEntityBtnIDLoading").style.display = "none";
+    document.getElementById("editEntityBtnID").style.display = "block";
+    // show a success alert
+    document.getElementById("editedEntitySuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFail function to be called when the server is unable to edit a person
+   */
+  function onFailEditEntity(err) {
+    // hide the loading button and show the add entity button
+    document.getElementById("editEntityBtnIDLoading").style.display = "none";
+    document.getElementById("editEntityBtnID").style.display = "block";
+    alert("Unable to edit this entity in the database. Please refresh this page." + err);
+  }
+
+
+
+
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ------------------------------------------------------------------  ADDING/EDITING A CONTACT HELPER FUNCTIONS  ---------------------------------------------------------------
+
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+  // ------------------------------------------------------ Filling in Contact Modal -----------------------------------------------
+
+  /**
+   * Function to fill in edit Person modal with person information pulled from JSON
+   */
+  function fillInPersonDiv() {
+    // get the personID and associated person/address/mailing
+    var personID = document.getElementById("selectedPersonID").value;
+    var person = jsonData.persons[personID];
+    var addressID = person["AddressID"];
+    var address = null;
+    if (addressID) {
+      address = jsonData.addresses[addressID];
+    }
+    var mailingAddressID = person["MailingAddressID"];
+    var mailingAddress = null;
+    if (mailingAddressID) {
+      mailingAddress = jsonData.addresses[mailingAddressID];
+    }
+    // fill in the fields if they exist - put an empty string if they dont
+    if (mailingAddress) {
+      document.getElementById("personMailingCheck").checked = true;
+      document.getElementById("personMailingAddress").value = mailingAddress["Address"] || "";
+      document.getElementById("personMailingCity").value = mailingAddress["City"] || "";
+      document.getElementById("personMailingState").value = mailingAddress["State"] || "";
+      document.getElementById("personMailingZip").value = mailingAddress["ZipCode"] || "";
+      document.getElementById("personMailingCountry").value = mailingAddress["Country"] || "";
+    }
+    togglePersonMailingAddressDiv();
+    if (address) {
+      document.getElementById("personAddress").value = address["Address"] || "";
+      document.getElementById("personCity").value = address["City"] || "";
+      document.getElementById("personState").value = address["State"] || "";
+      document.getElementById("personZip").value = address["ZipCode"] || "";
+      document.getElementById("personCountry").value = address["Country"] || "";
+    }
+    document.getElementById("personLetterName").value = person["LetterName"] || "";
+    document.getElementById("personEmail").value = person["Email"] || "";
+    document.getElementById("personPersonalPhone").value = person["PersonalPhone"] || "";
+    document.getElementById("personWorkPhone").value = person["WorkPhone"] || "";
+    document.getElementById("personMiddleName").value = person["MiddleName"] || "";
+    // these fields were required to create a person so no null check needed
+    document.getElementById("personFirstName").value = person["FirstName"];
+    document.getElementById("personLastName").value = person["LastName"];
+  }
+
+  /**
+   * Function to fill in edit entity modal with entity information pulled from JSON
+   */
+  function fillInEntityDiv() {
+    // get the entityID and associated entity
+    var entityID = document.getElementById("selectedEntityID").value;
+    var entity = jsonData.entities[entityID];
+    var addressID = entity["AddressID"];
+    // address null check
+    var address = null;
+    if (addressID) {
+      address = jsonData.addresses[addressID];
+    }
+    // mailing address null check
+    var mailingAddressID = entity["MailingAddressID"];
+    var mailingAddress = null;
+    if (mailingAddressID) {
+      mailingAddress = jsonData.addresses[mailingAddressID];
+    }
+    // fill in the fields 
+    if (mailingAddress) {
+      document.getElementById("entityMailingCheck").checked = true;
+      document.getElementById("entityMailingAddress").value = mailingAddress["Address"] || "";
+      document.getElementById("entityMailingCity").value = mailingAddress["City"] || "";
+      document.getElementById("entityMailingState").value = mailingAddress["State"] || "";
+      document.getElementById("entityMailingZip").value = mailingAddress["ZipCode"] || "";
+      document.getElementById("entityMailingCountry").value = mailingAddress["Country"] || "";
+    }
+    toggleEntityMailingAddressDiv();
+    if (address) {
+      document.getElementById("entityAddress").value = address["Address"] || "";
+      document.getElementById("entityCity").value = address["City"] || "";
+      document.getElementById("entityState").value = address["State"] || "";
+      document.getElementById("entityZip").value = address["ZipCode"] || "";
+      document.getElementById("entityCountry").value = address["Country"] || "";
+    }
+    document.getElementById("entityEmail").value = entity["Email"] || "";
+    document.getElementById("entityPhone").value = entity["Phone"] || "";
+    document.getElementById("entityStateOfIncorporation").value = entity["StateOfIncorporation"] || "";
+    document.getElementById("entityType").value = entity["Type"] || "Not Specified";
+
+    //populate entity person kanban with associated people 
+    var IDstr = entity["PersonID"];
+    var peopleIDs = []
+    if (IDstr) {
+      peopleIDs = entity["PersonID"].split(',');
+    }
+    populateEntityPeopleKanban(peopleIDs);
+    toggleEntityPeopleKanban();
+    // required field for all entities
+    document.getElementById("entityName").value = entity["Name"];
+  }
+
+  // ------------------------------------------- Get Contact Information from Webpage ----------------------------------------------
+
+  /**
+   * Function that gets the person information currently stored on the webpage
+   *
+   * @return {object} returns a list of dictionaries [person, address, mailingAddress]
+   */
+  function getPersonInformation() {
+    // Instantiate the dictionaries that will be used to create the address and person (pull this info right away to avoid user's changing it)
+    var address = {};
+    var person = {};
+    var mailingAddress;
+    // check to ensure that the person is valid (has non-null first and last names)
+    if (!checkValidPerson()) {
+      // if person is not valid, return null
+      return null;
+    }
+    // fill out the mailing address, or leave as null if box is unchecked
+    if (document.getElementById("personMailingCheck").checked) {
+      // fill out mailing address
+      mailingAddress = {};
+      mailingAddress["Address"] = document.getElementById("personMailingAddress").value;
+      mailingAddress["City"] = document.getElementById("personMailingCity").value;
+      mailingAddress["State"] = document.getElementById("personMailingState").value;
+      mailingAddress["ZipCode"] = document.getElementById("personMailingZip").value;
+      mailingAddress["Country"] = document.getElementById("personMailingCountry").value;
+    } else {
+      // set mailing address to be null
+      mailingAddress = null;
+    }
+    // fill in the address information													
+    address["Address"] = document.getElementById("personAddress").value;
+    address["City"] = document.getElementById("personCity").value;
+    address["State"] = document.getElementById("personState").value;
+    address["ZipCode"] = document.getElementById("personZip").value;
+    address["Country"] = document.getElementById("personCountry").value;
+    // fill in the person information
+    person["FirstName"] = document.getElementById("personFirstName").value;
+    person["MiddleName"] = document.getElementById("personMiddleName").value;
+    person["LastName"] = document.getElementById("personLastName").value;
+    person["LetterName"] = document.getElementById("personLetterName").value;
+    person["Email"] = document.getElementById("personEmail").value;
+    person["PersonalPhone"] = document.getElementById("personPersonalPhone").value;
+    person["WorkPhone"] = document.getElementById("personWorkPhone").value;
+    return [person, address, mailingAddress];
+  }
+
+  /**
+   * Function that gets the entity information currently stored on the webpage and puts it into dictionaries
+   *
+   * @return {object} returns a list of dictionaries [entity, address, mailingAddress]
+   */
+  function getEntityInformation() {
+    // Instantiate the dictionaries that will be used to create the address and person (pull this info right away to avoid user's changing it)
+    var address = {};
+    var entity = {};
+    var mailingAddress;
+    // check to ensure that the person is valid (has non-null first and last names)
+    if (!checkValidEntity()) {
+      // if entity is not valid, return null
+      return null;
+    }
+    // fill out the mailing address, or leave as null if box is unchecked
+    if (document.getElementById("entityMailingCheck").checked) {
+      // fill out mailing address
+      mailingAddress = {};
+      mailingAddress["Address"] = document.getElementById("entityMailingAddress").value;
+      mailingAddress["City"] = document.getElementById("entityMailingCity").value;
+      mailingAddress["State"] = document.getElementById("entityMailingState").value;
+      mailingAddress["ZipCode"] = document.getElementById("entityMailingZip").value;
+      mailingAddress["Country"] = document.getElementById("entityMailingCountry").value;
+    } else {
+      // set mailing address to be null
+      mailingAddress = null;
+    }
+    // fill in the address information													
+    address["Address"] = document.getElementById("entityAddress").value;
+    address["City"] = document.getElementById("entityCity").value;
+    address["State"] = document.getElementById("entityState").value;
+    address["ZipCode"] = document.getElementById("entityZip").value;
+    address["Country"] = document.getElementById("entityCountry").value;
+    // fill in the entity information
+    entity["Name"] = document.getElementById("entityName").value;
+    entity["Type"] = document.getElementById("entityType").value;
+    entity["StateOfIncorporation"] = document.getElementById("entityStateOfIncorporation").value;
+    entity["Email"] = document.getElementById("entityEmail").value;
+    entity["Phone"] = document.getElementById("entityPhone").value;
+    // turn assigned people list into a string
+    entity["PersonID"] = getIDsFromKanban("kanbanAssigned").join(',');
+    return [entity, address, mailingAddress];
+  }
+
+  // --------------------------------------- Check Input Validity --------------------------------------
+
+  /**
+   * Function to check that the person is valid (has non-null first and last names)
+   * Highlights/marks the required fields that are invalid
+   *
+   * @return {boolean} true if the person info is valid, false if not
+   */
+  function checkValidPerson() {
+    var valid = true;
+    var firstName = document.getElementById("personFirstName");
+    var lastName = document.getElementById("personLastName");
+    if (!firstName.value) { //first name is null
+      // mark the field
+      firstName.className = "form-control is-invalid";
+      // set valid flag to false
+      valid = false;
+    } else { // first name is not null
+      firstName.className = "form-control";
+    }
+    if (!lastName.value) { //last name is null
+      // mark the field
+      lastName.className = "form-control is-invalid";
+      // set valid flag to false
+      valid = false;
+    } else { // last name is not null
+      lastName.className = "form-control";
+    }
+    return valid;
+  }
+
+  /**
+   * Function to check that the entity is valid (has non-null name)
+   * Highlights/marks the required fields that are invalid
+   *
+   * @return {boolean} true if the entity info is valid, false if not
+   */
+  function checkValidEntity() {
+    var entityName = document.getElementById("entityName");
+    if (!entityName.value) { // entity name is null
+      // mark the field
+      entityName.className = "form-control is-invalid";
+      // set valid flag to false
+      return false;
+    } else { // entity name is not null
+      entityName.className = "form-control";
+      return true;
+    }
+  }
+
+  // ------------------------------------ Toggle Mailing Addresses ------------------------------------
+
+  /**
+   * Function to toggle whether or not the person's mailing address is the same as their original
+   */
+  function togglePersonMailingAddressDiv() {
+    // change the display
+    var elem = document.getElementById("personMailingCheck");
+    if (elem.checked) { // if the user uses a different mailing address...
+      document.getElementById("personMailingAddressDiv").style.display = "block";
+    } else { // the user's mailing address is the same as their original address
+      document.getElementById("personMailingAddressDiv").style.display = "none";
+    }
+  }
+
+  /**
+   * Function to toggle whether or not the entity's mailing address is the same as their original
+   */
+  function toggleEntityMailingAddressDiv() {
+    // pull mailing list checkbox element
+    var elem = document.getElementById("entityMailingCheck");
+    if (elem.checked) { // if the entity uses a different mailing address
+      document.getElementById("entityMailingAddressDiv").style.display = "block"; //show mailing address form
+    } else { // the entity's mailing address is the same as their original address
+      document.getElementById("entityMailingAddressDiv").style.display = "none"; //hide mailing address form
+    }
+  }
+
+  // ------------------------------------ Clear Contact Fields ------------------------------------
+
+  /**
+   * Helper function to clear the fields of the person inputs
+   */
+  function clearPersonFields() {
+    //hide mailing address form and uncheck box
+    document.getElementById("personMailingCheck").checked = false;
+    togglePersonMailingAddressDiv();
+    //clear all form fields
+    document.getElementById("personMailingAddress").value = null;
+    document.getElementById("personMailingCity").value = null;
+    document.getElementById("personMailingState").value = null;
+    document.getElementById("personMailingZip").value = null;
+    document.getElementById("personMailingCountry").value = null;
+    document.getElementById("personAddress").value = null;
+    document.getElementById("personCity").value = null;
+    document.getElementById("personState").value = null;
+    document.getElementById("personZip").value = null;
+    document.getElementById("personCountry").value = null;
+    document.getElementById("personFirstName").value = null;
+    document.getElementById("personMiddleName").value = null;
+    document.getElementById("personLastName").value = null;
+    document.getElementById("personLetterName").value = null;
+    document.getElementById("personEmail").value = null;
+    document.getElementById("personPersonalPhone").value = null;
+    document.getElementById("personWorkPhone").value = null;
+    document.getElementById("personFirstName").className = "form-control";
+    document.getElementById("personLastName").className = "form-control";
+  }
+
+  /**
+   * Helper function Clears the fields of the Entity inputs
+   */
+  function clearEntityFields() {
+    document.getElementById("entityMailingCheck").checked = false;
+    toggleEntityMailingAddressDiv();
+    document.getElementById("entityMailingAddress").value = null;
+    document.getElementById("entityMailingCity").value = null;
+    document.getElementById("entityMailingState").value = null;
+    document.getElementById("entityMailingZip").value = null;
+    document.getElementById("entityMailingCountry").value = null;
+    document.getElementById("entityAddress").value = null;
+    document.getElementById("entityCity").value = null;
+    document.getElementById("entityState").value = null;
+    document.getElementById("entityZip").value = null;
+    document.getElementById("entityCountry").value = null;
+    document.getElementById("entityName").value = null;
+    document.getElementById("entityType").value = "Not Specified";
+    document.getElementById("entityEmail").value = null;
+    document.getElementById("entityPhone").value = null;
+    document.getElementById("entityStateOfIncorporation").value = null;
+    // set form input formatting for required fields
+    document.getElementById("entityName").className = "form-control";
+    // reset entity peopl kanban and list
+    populateEntityPeopleKanban([]);
+    document.getElementById("associatedPeoplePID").innerHTML = "No Associated People";
+    // update toggle kan ban to hidden and update btn if its currently not hidden
+    var kanbanStyle = document.getElementById("managePeopleKanbanOuterDiv").style.display;
+    if (kanbanStyle == "flex") {
+      toggleEntityPeopleKanban();
+    }
+  }
+
+  /**
+   * Function to hide the contact success messages when the modal body is clicked -----CHANGE NAME
+   */
+  function hideContactSuccessMessages() {
+    document.getElementById("addedPersonSuccessMessage").style.display = "none";
+    document.getElementById("addedEntitySuccessMessage").style.display = "none";
+    document.getElementById("editedPersonSuccessMessage").style.display = "none";
+    document.getElementById("editedEntitySuccessMessage").style.display = "none";
+  }
+
+  // -------------------------------------------------- Kanban Stuff -----------------------------------------------------
+
+  /**
+   * Toggles the entity-person kanban 
+   */
+  function toggleEntityPeopleKanban() {
+    var kanbanStyle = document.getElementById("managePeopleKanbanOuterDiv").style.display
+    if (kanbanStyle == "flex") { // if kanban is shown
+      // hide kan ban
+      document.getElementById("managePeopleKanbanOuterDiv").style.display = "none";
+      document.getElementById("manageAssociatedBtnID").innerHTML = "Manage Associated People";
+
+      // pull id's of associated people from kanban
+      var peopleIDs = getIDsFromKanban("kanbanAssigned")
+      // update displayed list
+      var nameStr = ""
+      for (var i = 0; i < peopleIDs.length; i++) {
+        nameStr += jsonData.persons[peopleIDs[i]]["FirstName"] + " " + jsonData.persons[peopleIDs[i]]["LastName"] + ", "
+      }
+      var nameHTML;
+      if (nameStr.length == 0) {
+        nameHTML = "No Associated People"
+      } else {
+        nameHTML = nameStr.slice(0, nameStr.length - 2);
+      }
+      document.getElementById("associatedPeoplePID").innerHTML = nameHTML;
+      // show list of people associated with the Entity
+      document.getElementById("associatedPeopleListID").style.display = "block";
+    } else { // kanban is hidden
+      // hide list of people
+      document.getElementById("associatedPeopleListID").style.display = "none";
+      document.getElementById("manageAssociatedBtnID").innerHTML = "Update Associated People";
+      // shows kanban
+      document.getElementById("managePeopleKanbanOuterDiv").style.display = "flex";
+    }
+  }
+
+  /**
+   * fill out Entity People kanban from JSON and passed in list in sorted order
+   * 
+   * @param {array} associated: a list of peopleIDs associated to an Entity 
+   */
+  function populateEntityPeopleKanban(associated) {
+    // get list of associated people from json and sort by last name
+    associated = associated.sort(function (p1, p2) { return jsonData.persons[p1]["LastName"].localeCompare(jsonData.persons[p2]["LastName"]) }); // sortList Alphabetically
+    var associatedSet = new Set(associated);
+    // make list of non associated people
+    var people = Object.keys(jsonData.persons);
+    var unassociated = [];
+    for (var i = 0; i < people.length; i++) {
+      var personID = people[i];
+      if (!associatedSet.has(personID)) {
+        unassociated.push(personID);
+      }
+    }
+    unassociated = unassociated.sort(function (p1, p2) { return jsonData.persons[p1]["LastName"].localeCompare(jsonData.persons[p2]["LastName"]) }); // sortList Alphabetically
+    // add both to kanban
+    // generate the html for the kanbans
+    var associatedString = "";
+    var person;
+    for (var i = 0; i < associated.length; i++) {
+      person = jsonData.persons[associated[i]];
+      associatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + person["LastName"] + ", " + person["FirstName"] + '</p>' +
+        '<input type="hidden" id="' + person["LastName"] + ", " + person["FirstName"] + '" value="' + associated[i] + '">' +
+        '</div>';
+    }
+    associatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    var unassociatedString = "";
+    for (var i = 0; i < unassociated.length; i++) {
+      person = jsonData.persons[unassociated[i]];
+      unassociatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + person["LastName"] + ", " + person["FirstName"] + '</p>' +
+        '<input type="hidden" id="' + person["LastName"] + ", " + person["FirstName"] + '" value="' + unassociated[i] + '">' +
+        '</div>';
+    }
+    // put the html in
+    unassociatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    document.getElementById("kanbanAssigned").innerHTML = associatedString;
+    document.getElementById("kanbanUnassigned").innerHTML = unassociatedString;
+  }
+
+  // --------------------------------------------- Searching within Kanbans ---------------------------------------------
+
+  /**
+   * Function that toggles whether or not the search bar is visible for the entity-people kanban
+   */
+  function toggleSearchEntityPeopleKanban() {
+    var searchBar = document.getElementById("entityAssociatedPeopleSearchBar");
+    if (searchBar.style.display == "none") {
+      // if search bar is hidden, simply clear the search field and show it
+      document.getElementById("entityAssociatedPeopleSearchValue").value = null;
+      searchBar.style.display = "block";
+    } else {
+      // if search bar is visible, refresh unassociated and hide it
+      var associated = getIDsFromKanban("kanbanAssigned");
+      populateEntityPeopleKanban(associated);
+      searchBar.style.display = "none";
+    }
+  }
+
+  /**
+   * Using the term in the search bar, this function populates the unnassociated people side of the entity kanban with only people whose names include the term
+   */
+  function searchEntityPeopleKanban() {
+    // Refresh the kanban
+    var associated = getIDsFromKanban("kanbanAssigned");
+    populateEntityPeopleKanban(associated);
+    // Get the search term
+    var searchTerm = document.getElementById("entityAssociatedPeopleSearchValue").value;
+    // Get the unassociated people
+    var unassociatedPeople = getIDsFromKanban("kanbanUnassigned");
+    var refinedList = [];
+    // Iterate through the unassociated people and refine the list to entities whose names include the search term
+    var person;
+    for (var i = 0; i < unassociatedPeople.length; i++) {
+      person = jsonData.persons[unassociatedPeople[i]];
+      if (person["FirstName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(unassociatedPeople[i]);
+      } else if (person["LastName"].toLowerCase().includes(searchTerm.toLowerCase())) {
+        refinedList.push(unassociatedPeople[i]);
+      }
+    }
+    // Replace the unassociated people with the refined list
+    var unassociatedString = "";
+    for (var i = 0; i < refinedList.length; i++) {
+      person = jsonData.persons[refinedList[i]];
+      unassociatedString += '<div class="card card-progress draggable-item border shadow-none  ">' +
+        '<p style="margin-top:0.5rem; margin-bottom:0.5rem">' + person["LastName"] + ', ' + person["FirstName"] + '</p>' +
+        '<input type="hidden" id="' + person["LastName"] + ', ' + person["FirstName"] + '" value="' + refinedList[i] + '">' +
+        '</div>';
+    }
+    // put the html in
+    unassociatedString += '<span class="empty-container" data-placeholder="Empty"></span>';
+    document.getElementById("kanbanUnassigned").innerHTML = unassociatedString;
+  }
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------   (UNDOING) DELETING CONTACTS   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+  // --------------------------------------------------------------  Deleting A Person  --------------------------------------------------------------------------
+
+  /** 
+   * Function to delete a person
+   */
+  function deletePerson() {
+    // hide the delete button and replace with loading button
+    document.getElementById("deletePersonButton").style.display = "none";
+    document.getElementById("deletePersonButtonLoading").style.display = "block";
+    // get the id of the person to be deleted
+    var personID = document.getElementById("selectedPersonID").value;
+    // reset the selected person id
+    document.getElementById("selectedPersonID").value = null;
+    document.getElementById("associatedNoteType").value = null;
+    // delete the person from the server
+    google.script.run.withSuccessHandler(onSuccessDeletePerson).withFailureHandler(onFailureDeletePerson).deletePerson(personID);
+  }
+
+  /**
+   * onSuccess function for when a person is successfully deleted
+   *
+   * @param {string} deletedPersonID: the id of the person that was just deleted
+   */
+  function onSuccessDeletePerson(infoList) {
+    var deletedPersonID = infoList[0];
+    // Set the hidden tag
+    document.getElementById("deletedPersonID").value = deletedPersonID;
+    document.getElementById("parentFolderIDs").value = infoList[1].join(',');
+    // Get the deleted person object to display the alert correctly
+    var deletedPerson = jsonData.persons[deletedPersonID];
+    // remove the deleted person from the jsonData
+    delete jsonData.persons[deletedPersonID];
+    // update the delete alert
+    document.getElementById("deletedPersonName").innerHTML = deletedPerson["FirstName"] + " " + deletedPerson["LastName"] + " has been deleted.";
+    // show the successful delete alert
+    document.getElementById("deletedPersonAlert").style.display = "flex";
+    // hide loading button and show delete button
+    document.getElementById("deletePersonButtonLoading").style.display = "none";
+    document.getElementById("deletePersonButton").style.display = "block";
+    // update the person list to reflect that this person has been deleted
+    document.getElementById(deletedPersonID).style.display = "none";
+    // hide the card of the client that was just deleted
+    document.getElementById("selectedPersonCardID").style.display = "none";
+  }
+
+
+  /**
+   * onFailure function for when a person is unsuccessfully deleted
+   */
+  function onFailureDeletePerson(err) {
+    alert("Unable to delete this person from the database. Please refresh this page. " + err);
+    // hide loading button and show delete button
+    document.getElementById("deletePersonButtonLoading").style.display = "none";
+    document.getElementById("deletePersonButton").style.display = "block";
+  }
+
+  // -----------------------------------------------------------  Undoing Deleting A Person  -----------------------------------------------------------------------
+
+  /**
+   * Function that undoes the delete operation for the most recently deleted person
+   */
+  function undoDeletePerson() {
+    // get the id of the person being undeleted
+    var personID = document.getElementById("deletedPersonID").value;
+    var parentFolderIDs = document.getElementById("parentFolderIDs").value.split(',');
+    // hide the undo button and show the loading button
+    document.getElementById("undoDeletePersonButton").style.display = "none";
+    document.getElementById("undoDeletePersonButtonLoading").style.display = "block";
+    // have the server actually undo the deletion
+    google.script.run.withSuccessHandler(onSuccessUndoDeletePerson).withFailureHandler(onFailUndoDeletePerson).undoDeletePerson(personID, parentFolderIDs);
+  }
+
+  /**
+   * onSuccessFunction for when a person is successfully recovered
+   *
+   * @param {object} person: the person object that was just recovered
+   */
+  function onSuccessUndoDeletePerson(person) {
+    var personID = document.getElementById("deletedPersonID").value;
+    // update json to reflect that this person was recovered
+    jsonData.persons[personID] = person;
+    // update the person list to reflect that this person has been brought back
+    document.getElementById(personID).style.display = "block";
+    // hide deleted person alert
+    hideAlert("deletedPersonAlert");
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeletePersonButtonLoading").style.display = "none";
+    document.getElementById("undoDeletePersonButton").style.display = "block";
+    // update the success undo alert to have the person's name
+    document.getElementById("undoDeletedPersonName").innerHTML = jsonData.persons[personID]["FirstName"] + " " + jsonData.persons[personID]["LastName"] + " has been recovered.";
+    // show success undo alert
+    document.getElementById("undoDeletedPersonAlert").style.display = "flex";
+    // unselect personID
+    document.getElementById(personID).className = "list-group-item hoverable ";
+  }
+
+  /**
+   * onFailure function to be called when the json data is not properly updated by the server
+   */
+  function onFailUndoDeletePerson(err) {
+    alert("Unable to reload json data after undoing the deletion. Please refresh this page. " + err);
+    // hide deleted person alert
+    hideAlert("deletedPersonAlert");
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeletePersonButtonLoading").style.display = "none";
+    document.getElementById("undoDeletePersonButton").style.display = "block";
+  }
+
+  // --------------------------------------------------------------  Deleting Entities  ------------------------------------------------------------------------
+
+  /** 
+   * Function to delete an Entity
+   */
+  function deleteEntity() {
+    // hide the delete button and replace with loading button
+    document.getElementById("deleteEntityButton").style.display = "none";
+    document.getElementById("deleteEntityButtonLoading").style.display = "block";
+    // get the Entity to be deleted
+    var entityID = document.getElementById("selectedEntityID").value;
+    // reset the selected Entity id
+    document.getElementById("selectedEntityID").value = null;
+    document.getElementById("associatedNoteType").value = null;
+    // delete the client from the server
+    google.script.run.withSuccessHandler(onSuccessDeleteEntity).withFailureHandler(onFailureDeleteEntity).deleteEntity(entityID);
+  }
+
+  /**
+   * onSuccess function for when a Entity is successfully deleted
+   *
+   * @param {string} deletedEntityID: the id of the entity that was just deleted
+   */
+  function onSuccessDeleteEntity(infoList) {
+    var deletedEntityID = infoList[0];
+    // Set the hidden tag
+    document.getElementById("deletedEntityID").value = deletedEntityID;
+    document.getElementById("parentFolderIDs").value = infoList[1].join(',');
+    // Get the deleted entity object to display the alert correctly
+    var deletedEntity = jsonData.entities[deletedEntityID];
+    // remove the deleted entity from the jsonData
+    delete jsonData.entities[deletedEntityID];
+    // update the delete alert
+    document.getElementById("deletedEntityName").innerHTML = deletedEntity["Name"] + " has been deleted.";
+    // show the successful delete alert
+    document.getElementById("deletedEntityAlert").style.display = "flex";
+    // hide loading button and show delete button
+    document.getElementById("deleteEntityButtonLoading").style.display = "none";
+    document.getElementById("deleteEntityButton").style.display = "block";
+    // update the Entity list to reflect that this entity has been deleted
+    document.getElementById(deletedEntityID).style.display = "none";
+    // hide the card of the Entity that was just deleted
+    document.getElementById("selectedEntityCardID").style.display = "none";
+  }
+
+  /**
+   * onFailure function for when a Entity is unsuccessfully deleted
+   */
+  function onFailureDeleteEntity(err) {
+    alert("Unable to delete the entityfrom the database. Please refresh this page. " + err);
+    // hide loading button and show delete button
+    document.getElementById("deleteEntityButtonLoading").style.display = "none";
+    document.getElementById("deleteEntityButton").style.display = "block";
+  }
+
+  // -----------------------------------------------------------  Undoing Deleting Entities  ---------------------------------------------------------------------
+
+  /**
+   * Function that undoes the delete operation for the most recently deleted Entity
+   */
+  function undoDeleteEntity() {
+    // get the id of the entity being undeleted
+    var entityID = document.getElementById("deletedEntityID").value;
+    var parentFolderIDs = document.getElementById("parentFolderIDs").value.split(',');
+    // hide the undo button and show the loading button
+    document.getElementById("undoDeleteEntityButton").style.display = "none";
+    document.getElementById("undoDeleteEntityButtonLoading").style.display = "block";
+    // have the server actually undo the deletion
+    google.script.run.withSuccessHandler(onSuccessUndoDeleteEntity).withFailureHandler(onFailUndoDeleteEntity).undoDeleteEntity(entityID, parentFolderIDs);
+  }
+
+  /**
+   * onSuccessFunction to be called when an entity is recovered successfully
+   * 
+   * @param {object} entity: the entity object that was just recovered
+   */
+  function onSuccessUndoDeleteEntity(entity) {
+    var entityID = document.getElementById("deletedEntityID").value;
+    // update the json to reflect that the entity was recovered
+    jsonData.entities[entityID] = entity;
+    // update the Entity list to reflect that this Entity has been brought back
+    document.getElementById(entityID).style.display = "block";
+    // hide deleted Entity alert
+    hideAlert("deletedEntityAlert");
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeleteEntityButtonLoading").style.display = "none";
+    document.getElementById("undoDeleteEntityButton").style.display = "block";
+    // update the success undo alert to have the Entity's name
+    document.getElementById("undoDeletedEntityName").innerHTML = jsonData.entities[entityID]["Name"] + " has been recovered.";
+    // show success undo alert
+    document.getElementById("undoDeletedEntityAlert").style.display = "flex";
+    // unselect entityID
+    document.getElementById(entityID).className = "list-group-item hoverable ";
+  }
+
+  /**
+   * onFail function to be called when an entity fails to be recovered
+   */
+  function onFailUndoDeleteEntity(err) {
+    alert("Unable to reload json data after undoing the deletion. Please refresh this page. " + err);
+    // hide deleted Entity alert
+    hideAlert("deletedEntityAlert");
+    // hide the loading button and show the undo button (for future deletes/undos)
+    document.getElementById("undoDeleteEntityButtonLoading").style.display = "none";
+    document.getElementById("undoDeleteEntityButton").style.display = "block";
+  }
+
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------------  PERMISSIONS FUNCTIONS  ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  /**
+  * Hides and shows buttons that are restricted for some users depending on their privilege level in the member sheet
+  *         handles this for the contact info card
+  *
+  * @param {string} createdBy: string holding email of user who created("last modified") the contact
+  * @param {string} type: the type of contact (person or entity)
+  */
+  function updateContactCardPrivileges(createdBy, type) {
+    // Hide all privilege-based buttons
+    document.getElementById("openEdit" + type + "Modal").style.display = "none"
+    document.getElementById("delete" + type + "Button").style.display = "none"
+    // Go through and show privilege-based buttons according to the user's privilege level
+    var userPriv = jsonData.user["Privileges"];
+    if (userPriv > 0) {
+      // Show level 1 privileges (edit/delete contact if the user created them)
+      // check to see if this contact was created by the current user
+      if (createdBy == jsonData.user["Email"]) {
+        document.getElementById("openEdit" + type + "Modal").style.display = "inline-block";
+        document.getElementById("delete" + type + "Button").style.display = "block";
+      }
+      if (userPriv > 1) {
+        // Show level 2 privileges (edit/delete any contact)
+        document.getElementById("openEdit" + type + "Modal").style.display = "inline-block";
+        document.getElementById("delete" + type + "Button").style.display = "block";
+        // Level 3 privileges for contacts are covered by levels 1 and 2
+      }
+    }
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // -----------------------------------------------------------------  MISC HELPER FUNCTIONS  ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+  /**
+   * Function that pulls IDs from a kanban column
+   *
+   * @param {string} assignedID: ID of assigned (or unassigned) column - "kanbanAssigned"
+   * @return {object} returns a list of ids of contacts that were in the given column
+   */
+  function getIDsFromKanban(assignedID) {
+    var div = document.getElementById(assignedID);
+    // get list of HTML elemets each a kanban item
+    var innerPs = div.getElementsByTagName('p');
+    var idList = [];
+    var name, id;
+    for (var i = 0; i < innerPs.length; i++) {
+      name = innerPs[i].textContent
+      id = document.getElementById(name).value;
+      idList.push(id);
+    }
+    return idList;
+  }
+
+  /**
+   * function to hide alert given element id
+   *
+   * @param {string} alertID: the HTML ID of the alert to be hidden
+   */
+  function hideAlert(alertID) {
+    document.getElementById(alertID).style.display = "none"
+  }
+
+</script>

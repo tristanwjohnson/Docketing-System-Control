@@ -1,0 +1,526 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------------   Show Note Functions   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * function to show the note information of a given note
+   * 
+   * @param {string} noteID: the ID of the note to be displayed
+   */
+  function showNoteInfo(noteID) {
+    // Set the hidden tag
+    document.getElementById("selectedNoteID").value = noteID;
+    // get not from JSON
+    var note = jsonData.notes[noteID];
+    // if note is not null show note info
+    if (note) {
+      // populate the note fields
+      document.getElementById("displayNoteTitle").innerHTML = note["Title"];
+      document.getElementById("displayNoteSubject").innerHTML = note["Subject"];
+      var created = new Date(note["DateCreated"]);
+      var modified = new Date(note["DateModified"])
+      document.getElementById("noteCreated").innerHTML = 'Created: ' + note["CreatedBy"] + ', ' + created.toDateString();
+      document.getElementById("noteModified").innerHTML = 'Last Modified: ' + note["ModifiedBy"] + ', ' + modified.toDateString();
+      document.getElementById("noteMetadataRow").style.display = "flex";
+    }
+    // update buttons based on user privileges
+    updateNotePrivileges(note["CreatedBy"]);
+    // Show the note
+    toggleNoteType('show');
+  }
+
+
+  /**
+   * Formats note modal based on type passed in
+   *
+   * @param {string} type: type of note modal - show, add, edit
+   * 
+   */
+  function toggleNoteType(type) {
+    // Get the note ID and note
+    var noteID = document.getElementById("selectedNoteID").value;
+    var note = jsonData.notes[noteID];
+    // hide the error message and reset any invalid fields
+    document.getElementById("addNoteNullFieldsMessage").style.display = "none";
+    document.getElementById("addEditNoteTitle").className = "form-control";
+    document.getElementById("addEditNoteSubject").className = "form-control";
+    // refresh the modal (aka hide everything)
+    hideNoteModalElements();
+    if (type == "add") { // we are trying to add a new note
+      //show input fields
+      document.getElementById("addEditNoteDiv").style.display = "block";
+      // show add button
+      document.getElementById("noteAddEditButtonsRow").style.display = "flex";
+      document.getElementById("addNoteBtnID").style.display = "block";
+    } else if (type == "edit") { // we are trying to edit an existing note
+      // populate the fields with the existing note data
+      document.getElementById("addEditNoteTitle").value = note["Title"];
+      document.getElementById("addEditNoteSubject").value = note["Subject"];
+      //show input fields
+      document.getElementById("addEditNoteDiv").style.display = "block";
+      // show the edit button
+      document.getElementById("noteAddEditButtonsRow").style.display = "flex";
+      document.getElementById("editNoteBtnID").style.display = "block";
+    } else { // type == "show" -- we are trying to display an existing note
+      //show text fields
+      document.getElementById("showNoteDiv").style.display = "block";
+      // show metadata and edit/delete buttons in the footer
+      document.getElementById("noteMetadataRow").style.display = "flex";
+    }
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ----------------------------------------------------------------------   ADD/EDIT Note Functions   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  // -------------------------------------- Adding a Note ---------------------------------------
+
+  /**
+   * Function that pulls inputed information from the UI and calls the server to create a note
+   */
+  function addNote() {
+    // hide the add note button and show the loading button
+    document.getElementById("addNoteBtnID").style.display = "none";
+    document.getElementById("addNoteBtnIDLoading").style.display = "block";
+    // create a dictionary to store the note
+    var title = document.getElementById("addEditNoteTitle").value;
+    var subject = document.getElementById("addEditNoteSubject").value;
+    // Check input validity
+    if (!checkValidNote(title, subject)) {
+      // Inputs are not valid, show error message 
+      document.getElementById("addNoteNullFieldsMessage").style.display = "block";
+      // Reset buttons
+      document.getElementById("addNoteBtnIDLoading").style.display = "none";
+      document.getElementById("addNoteBtnID").style.display = "block";
+      // return so nothing else happens
+      return;
+    } else {
+      // hide the error message
+      document.getElementById("addNoteNullFieldsMessage").style.display = "none";
+    }
+    var note = { "Title": title, "Subject": subject };
+    // Call the server to actually create this note
+    google.script.run.withSuccessHandler(onSuccessAddNote).withFailureHandler(onFailAddNote).addNote(note);
+  }
+
+  /**
+   * onSuccessFunction to be called after a note is successfully created.
+   * This function then calls a server function to associate the note with an object
+   * 
+   * @param {object} note: a dictionary with the note information that was just added to the database
+   */
+  function onSuccessAddNote(note) {
+    // Get the type of note association (eg matter, client, person, etc)
+    var noteAssociation = document.getElementById("associatedNoteType").value;
+    // update jsonData.notes to include the new note
+    jsonData.notes[note["ID"]] = note;
+    var object;
+    if (noteAssociation == "person") {
+      // Call the server to update the selected person to include this note
+      var personID = document.getElementById("selectedPersonID").value;
+      var person = jsonData.persons[personID];
+      object = person;
+    } else if (noteAssociation == "entity") {
+      // Call the server to update the selected entity to include this note
+      var entityID = document.getElementById("selectedEntityID").value;
+      var entity = jsonData.entities[entityID];
+      object = entity;
+    } else if (noteAssociation == "client") {
+      // Call the server to update the selected client to include this note
+      var clientID = document.getElementById("selectedClientID").value;
+      var client = jsonData.clients[clientID];
+      object = client;
+    } else if (noteAssociation == "matter") {
+      // Call the server to update the selected matter to include this note
+      var matterID = document.getElementById("selectedMatterID").value;
+      var matter = jsonData.matters[matterID];
+      object = matter;
+    } else { // note asscoiation in UI doesn't match any know values
+      alert("Unable to associate this note with any existing type in the sheet.");
+      return;
+    }
+    // Call to the server
+    google.script.run.withSuccessHandler(onSuccessAddNoteAssociation).withFailureHandler(onFailAddNoteAssociation).addNoteAssociation(note["ID"], object, noteAssociation);
+  }
+  /**
+   * onFailFunction to be called after a note cannot be created
+   */
+  function onFailAddNote(err) {
+    // hide the loading button and show the add note button
+    document.getElementById("addNoteBtnIDLoading").style.display = "none";
+    document.getElementById("addNoteBtnID").style.display = "block";
+    alert("Unable to add this note to the database. Please refresh this page." + err);
+  }
+
+  /**
+   * onSuccessFunction to be called after note is successfully associated in the google sheet.
+   * This function then updates json data to reflect this association
+   * 
+   * @param {object} updatedObject: the person, entity, client, or matter that has been updated with the new note association
+   */
+  function onSuccessAddNoteAssociation(updatedObject) {
+    // Get the type of association (to be used to add to jsonData
+    var noteAssociation = document.getElementById("associatedNoteType").value;
+    var objectID = updatedObject["ID"];
+    // update jsonData
+    if (noteAssociation == "person") {
+      jsonData.persons[objectID] = updatedObject;
+      // update the person notes in the UI
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='personNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "entity") {
+      jsonData.entities[objectID] = updatedObject;
+      // update the entity notes in the UI
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='entityNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "client") {
+      jsonData.clients[objectID] = updatedObject;
+      // update the client notes in the UI
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='clientNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "matter") {
+      jsonData.matters[objectID] = updatedObject;
+      // update the matter notes in the UI
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='matterNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else { // note association doesnt match any know values
+      alert("Unable to associate this note with any existing type in the json data.");
+    }
+    // hide the loading button and show the add note button
+    document.getElementById("addNoteBtnIDLoading").style.display = "none";
+    document.getElementById("addNoteBtnID").style.display = "block";
+    // Show the success message 
+    document.getElementById("addNoteSuccessMessage").style.display = "block";
+    // clear the note input fields
+    document.getElementById("addEditNoteTitle").value = null;
+    document.getElementById("addEditNoteSubject").value = null;
+  }
+
+  /**
+   * function to alert the user if server call to update database fails
+   */
+  function onFailAddNoteAssociation(err) {
+    // hide the loading button and show the add note button
+    document.getElementById("addNoteBtnIDLoading").style.display = "none";
+    document.getElementById("addNoteBtnID").style.display = "block";
+    alert("Unable to add this note association to the database. Please refresh this page. " + err);
+  }
+
+  // -------------------------------------- Editing a Note ---------------------------------------
+
+  /**
+   * function to edit note by pulling inputed information and passing that to the serever to edit the database
+   */
+  function editNote() {
+    // hide the add note button and show the loading button
+    document.getElementById("editNoteBtnID").style.display = "none";
+    document.getElementById("editNoteBtnIDLoading").style.display = "block";
+    // create a dictionary to store the note
+    var title = document.getElementById("addEditNoteTitle").value;
+    var subject = document.getElementById("addEditNoteSubject").value;
+    // Check input validity
+    if (!checkValidNote(title, subject)) {
+      // Inputs are note valid, show error message 
+      document.getElementById("addNoteNullFieldsMessage").style.display = "block";
+      // Reset buttons
+      document.getElementById("editNoteBtnIDLoading").style.display = "none";
+      document.getElementById("editNoteBtnID").style.display = "block";
+      // break out of function without updating database
+      return;
+    } else {
+      // hide the error message
+      document.getElementById("addNoteNullFieldsMessage").style.display = "none";
+    }
+    // pull old note from JSON
+    var noteID = document.getElementById("selectedNoteID").value;
+    var note = jsonData.notes[noteID];
+    // update the title and subject fields of this note
+    note["Title"] = title;
+    note["Subject"] = subject;
+    // Call the server to update the note
+    google.script.run.withSuccessHandler(onSuccessEditNote).withFailureHandler(onFailEditNote).editNote(note);
+  }
+
+  /**
+   * onSuccessFunction to be called after a note is successfully edited.
+   * This function then calls a server function to associate the note with an object
+   * 
+   * @param {object} note: a dictionary of the note just updated in the database
+   */
+  function onSuccessEditNote(note) {
+    // Get the type of note association (eg matter, client, person, etc)
+    var noteAssociation = document.getElementById("associatedNoteType").value;
+    // update jsonData.notes to include the new note
+    jsonData.notes[note["ID"]] = note;
+    // update the ui to reflect any changes made to the note
+    var updatedObjectID, updatedObject;
+    if (noteAssociation == "person") { // if the note is tied to a person
+      updatedObjectID = document.getElementById("selectedPersonID").value;
+      updatedObject = jsonData.persons[updatedObjectID];
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='personNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "entity") { // if the note is tied to a entity
+      updatedObjectID = document.getElementById("selectedEntityID").value;
+      updatedObject = jsonData.entities[updatedObjectID];
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='entityNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "client") { // if the note is tied to a client
+      updatedObjectID = document.getElementById("selectedClientID").value;
+      updatedObject = jsonData.clients[updatedObjectID];
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='clientNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "matter") { // if the note is tied to a matter
+      updatedObjectID = document.getElementById("selectedMatterID").value;
+      updatedObject = jsonData.matters[updatedObjectID];
+      var notesStr = getNoteStr(updatedObject["NoteID"]);
+      $("div[id='matterNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else { // there was an error
+      alert("Unable to access associated object.");
+      // hide the loading button and show the add note button
+      document.getElementById("editNoteBtnIDLoading").style.display = "none";
+      document.getElementById("editNoteBtnID").style.display = "block";
+      return;
+    }
+    // hide the loading button and show the add note button
+    document.getElementById("editNoteBtnIDLoading").style.display = "none";
+    document.getElementById("editNoteBtnID").style.display = "block";
+    // Show the success message 
+    document.getElementById("editNoteSuccessMessage").style.display = "block";
+  }
+
+  /**
+   * onFailFunction if the server failed to edit the note in the sheet
+   */
+  function onFailEditNote(err) {
+    // hide the loading button and show the add note button
+    document.getElementById("addNoteBtnIDLoading").style.display = "none";
+    document.getElementById("addNoteBtnID").style.display = "block";
+    alert("Unable to edit this note within the database. Please refresh this page. " + err);
+  }
+
+
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // ------------------------------------------------------------------  ADDING/EDITING A CONTACT HELPER FUNCTIONS  ---------------------------------------------------------------
+
+  // ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Function that checks the validity of a note
+   * Currently, a valid note has non-null title and subject elements
+   * 
+   * @param {string} title: the title of the note inputted by the user
+   * @param {string} subject: the subject of the note inputted by the user
+   * @return {boolean} true if the fields are valid, false if not
+   */
+  function checkValidNote(title, subject) {
+    document.getElementById("addEditNoteTitle").className = "form-control";
+    document.getElementById("addEditNoteSubject").className = "form-control";
+    if (!title) {
+      document.getElementById("addEditNoteTitle").className = "form-control is-invalid";
+    }
+    if (!subject) {
+      document.getElementById("addEditNoteSubject").className = "form-control is-invalid";
+    }
+    return title && subject; // only returns true if both are valid
+  }
+
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------   DELETE NOTE FUNCTIONS   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * function to delete a selected note from the database
+   */
+  function deleteNote() {
+    //start loading btn
+    document.getElementById("deleteNoteBtn").style.display = "none";
+    document.getElementById("deleteNoteBtnLoading").style.display = "inline-block";
+    // get the note to be deleted
+    var noteID = document.getElementById("selectedNoteID").value;
+    // reset the selected note id
+    document.getElementById("selectedNoteID").value = null;
+    // find what the note is associated with for deletion
+    var noteAssociation = document.getElementById("associatedNoteType").value;
+    var object;
+    if (noteAssociation == "person") {
+      var personID = document.getElementById("selectedPersonID").value;
+      object = jsonData.persons[personID];
+    } else if (noteAssociation == "entity") {
+      var entityID = document.getElementById("selectedEntityID").value;
+      object = jsonData.entities[entityID];
+    } else if (noteAssociation == "client") {
+      var clientID = document.getElementById("selectedClientID").value;
+      object = jsonData.clients[clientID];
+    } else if (noteAssociation == "matter") {
+      var matterID = document.getElementById("selectedMatterID").value;
+      object = jsonData.matters[matterID];
+    } else {
+      alert("Unable to delete this note from any existing type in the json data.");
+    }
+    // delete the note from the server, as well as any pointers from the object to it
+    google.script.run.withSuccessHandler(onSuccessDeleteNote).withFailureHandler(onFailureDeleteNote).deleteNote([noteID], object, noteAssociation);
+  }
+
+  /**
+   * onSuccess function to be called after a note is successfully deleted
+   *
+   * @param {object} updatedObject: the updated object that previously owned the note
+   */
+  function onSuccessDeleteNote(updatedObject) {
+    // update the notes in the UI
+    var noteAssociation = document.getElementById("associatedNoteType").value;
+    // update the note string to no longer include the note that was just deleted
+    var notesStr = getNoteStr(updatedObject["NoteID"]);
+    // For each if statement, update the jsonData to have the updatedObject instead of the previous one, and then display the notes
+    if (noteAssociation == "person") {
+      var personID = document.getElementById("selectedPersonID").value;
+      jsonData.persons[personID] = updatedObject;
+      $("div[id='personNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "entity") {
+      var entityID = document.getElementById("selectedEntityID").value;
+      jsonData.entities[entityID] = updatedObject;
+      $("div[id='entityNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "client") {
+      var clientID = document.getElementById("selectedClientID").value;
+      jsonData.clients[clientID] = updatedObject;
+      $("div[id='clientNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else if (noteAssociation == "matter") {
+      var matterID = document.getElementById("selectedMatterID").value;
+      jsonData.matters[matterID] = updatedObject;
+      $("div[id='matterNoteListDiv']").find('li').remove().end().append($(notesStr));
+    } else {
+      alert("Unable to delete this note from any existing type in the json data.");
+    }
+    //replace delete and edit btns with note deleted notification
+    document.getElementById("noteMetadataRow").style.display = "none";
+    document.getElementById("deleteNoteSuccessMessage").style.display = "block";
+    //stop loading btn
+    document.getElementById("deleteNoteBtnLoading").style.display = "none";
+    document.getElementById("deleteNoteBtn").style.display = "inline-block";
+  }
+
+  /**
+   * onFail function to alert the user that the server function failed
+   */
+  function onFailureDeleteNote(err) {
+    alert("Unable to delete this note from the database. Please refresh this page. " + err);
+    //stop loading btn
+    document.getElementById("deleteNoteBtnLoading").style.display = "none";
+    document.getElementById("deleteNoteBtn").style.display = "inline-block";
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------   PRIVILEGES FUNCTIONS   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  /**
+   * hides and shows buttons that are restricted for some users depending on their privilege level in the member sheet
+   *         handles this for the note info modal
+   * 
+   * @param {string} createdBy: string holding email of user who created("last modified") the note
+   */
+  function updateNotePrivileges(createdBy) {
+    document.getElementById("openEditNoteBtn").style.display = "none";
+    document.getElementById("deleteNoteBtn").style.display = "none";
+    var userPriv = jsonData.user["Privileges"];
+    if (userPriv > 0) {
+      // Show level 1 privileges (edit/delete note if the user created them)
+      // check to see if this note was created by the current user
+      if (createdBy == jsonData.user["Email"]) {
+        document.getElementById("openEditNoteBtn").style.display = "inline-block";
+        document.getElementById("deleteNoteBtn").style.display = "inline-block";
+      }
+      if (userPriv > 1) {
+        // Show level 2 privileges (edit/delete any note)
+        document.getElementById("openEditNoteBtn").style.display = "inline-block";
+        document.getElementById("deleteNoteBtn").style.display = "inline-block";
+        // Level 3 privileges for notes are covered by levels 1 and 2
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  // --------------------------------------------------------------------   NOTE HELPER FUNCTIONS   ----------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+  /**
+   * Creates the HTML for displaying a list of notes 
+   *
+   * @param {string} noteIDs: string list of NoteIDs to be displayed
+   * @return {string} returns html of each note as a list item
+   */
+  function getNoteStr(noteIDs) {
+    var notesStr = '<li class="list-group-item  ">NO NOTES</li>';
+    if (noteIDs) {
+      noteIDs = noteIDs.split(',');
+      //remove null notes from list
+      var existingNoteIDs = [];
+      for (var i = 0; i < noteIDs.length; i++) {
+        var note = jsonData.notes[noteIDs[i]];
+        if (note) {
+          existingNoteIDs.push(noteIDs[i]);
+        }
+      }
+      // alphabetize the existingNoteIDs list
+      existingNoteIDs = existingNoteIDs.sort(function (n1, n2) { return jsonData.notes[n1]["Title"].localeCompare(jsonData.notes[n2]["Title"]) });
+      notesStr = "";
+      var note;
+      for (var i = 0; i < existingNoteIDs.length; i++) {
+        note = jsonData.notes[existingNoteIDs[i]];
+        notesStr += '<li class="list-group-item hoverable " id =' + note.ID + ' style="text-align:left" data-toggle="modal" data-target="#modal-note" onclick = "showNoteInfo(\'' + note.ID + '\')">' + note.Title + '</li>';
+      }
+    }
+    if (notesStr == "") { //if all notes are no longer valid
+      notesStr = '<li class="list-group-item  ">NO NOTES</li>';
+    }
+    return notesStr;
+  }
+
+  /**
+   * Function that hides all buttons/metadata/etc in the note modal
+   */
+  function hideNoteModalElements() {
+    // hide add/Edit and show divs in note modal
+    document.getElementById("addEditNoteDiv").style.display = "none";
+    document.getElementById("showNoteDiv").style.display = "none";
+    // clear the edit fields
+    document.getElementById("addEditNoteTitle").value = null;
+    document.getElementById("addEditNoteSubject").value = null;
+    // hide footer rows
+    document.getElementById("noteMetadataRow").style.display = "none";
+    document.getElementById("noteAddEditButtonsRow").style.display = "none";
+    // hide footer buttons
+    document.getElementById("addNoteBtnID").style.display = "none";
+    document.getElementById("editNoteBtnID").style.display = "none";
+  }
+
+  /**
+   * Function to hide the note success messages.
+   */
+  function hideNoteSuccessMessages() {
+    document.getElementById("addNoteSuccessMessage").style.display = "none";
+    document.getElementById("editNoteSuccessMessage").style.display = "none";
+    document.getElementById("deleteNoteSuccessMessage").style.display = "none";
+  }
+
+
+</script>

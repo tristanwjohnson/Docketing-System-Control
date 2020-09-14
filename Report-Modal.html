@@ -1,0 +1,76 @@
+<div class="modal fade" id="generateClientReportModal" tabindex="-1" role="dialog"
+  aria-labelledby="generateClientReportModal" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+    <div class="modal-content">
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="container">
+          <div class="row">
+            <div class="col-9">
+              <div class="modal-title d-flex align-items-center" id="modal-title-name-document">
+                <div>
+                  <div class="icon icon-shape icon-md icon-primary bg-white rounded-circle">
+                    <i class="fas fa-file" style="font-size:1.4rem"></i>
+                  </div>
+                </div>
+                <div id="cleanDatabaseModalTitle">Generate a Report</div>
+              </div>
+            </div>
+            <div class="col-3">
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span class="" aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="row">
+          <div class="col">
+            <div class="card">
+              <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-0">Clients</h6>
+                  </div>
+                </div>
+              </div>
+              <div class="row align-items-center" id="clientReportSearchBar" style="margin:0; display:inline">
+                <div class="form-group mb-0">
+                  <div class="input-group input-group-merge input-group-sm">
+                    <input type="text" class="form-control   " style="border:0.5" id="clientReportSearchValue"
+                      placeholder="Search">
+                    <div class="input-group-append">
+                      <span class="input-group-btn">
+                        <button type="button" class="btn btn-sm  " style="border:0.5" onclick="searchClientReport()">
+                          <i class="fas fa-search"></i>
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="clientReportList" class="list-group list-group-flush" style="height: 20rem; overflow: auto">
+                <div class="list-group-item">
+                  <div class="media align-items-center">
+                    <div class="media-body text-limit">
+                      <h6 class="text-sm d-block text-limit mb-0">Purpose Website UI</h6>
+                      <span class="d-block text-sm text-muted">Development</span>
+                    </div>
+                    <div class="media-body text-right">
+                      <button type="button" class="btn btn-sm btn-secondary">Open</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Footer -->
+        <!--div class="modal-footer" style="margin:0">
+      </div-->
+      </div>
+    </div>
+  </div>
+</div>

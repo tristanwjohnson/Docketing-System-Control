@@ -1,0 +1,113 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+
+  $(function () {
+    //on load
+    showMemberCards();
+  });
+
+  /**
+   * Function that generates the html for all of the team cards and then adds it to the ui
+   */
+  function showMemberCards() {
+    // get and alphabetize the list of members
+    var memberList = Object.values(jsonData.members).sort(function (m1, m2) { return m1["LastName"].localeCompare(m2["LastName"]); });
+    // for each member, generate their card html and add it to the main html string
+    var htmlString = "";
+    for (var i = 0; i < memberList.length; i++) {
+      htmlString += generateMemberCardHTML(memberList[i]);
+    }
+    // display this html
+    document.getElementById("memberRow").innerHTML = htmlString;
+  }
+
+  /**
+   * Function that generates the html for a single team member given their id
+   *
+   * @param {object} member: the dictionary of the member whose card we are creating
+   * @return {string} returns the html of the card that was created
+   */
+  function generateMemberCardHTML(member) {
+    var memberListHTML = generateMemberTaskList(member);
+    var memberHTML = '<div class="col col-6 col-sm-6 col-md-6 col-lg-4">' +
+      '<div class="card">' +
+      '<div class="card-body text-center" style="padding-bottom:0">' +
+      '<div class="avatar-parent-child">' +
+      '<img src="https://drive.google.com/thumbnail?id=' + member["ProfilePic"] + '" class="avatar  rounded-circle avatar-lg">' +
+      '</div>' +
+      '<h5 class="h6 mt-4 mb-0">' + member["FirstName"] + ' ' + member["LastName"] + '</h5>' +
+      '<p class="mb-0">' + member["Email"] + '</p>' +
+      '<p>' + member["Type"] + '</p>' +
+      '</div>' +
+      '<h6>Active Tasks</h6>' +
+      '<div id="' + member["ID"] + '_List" class="card-body border-top" style="max-height: 12rem; overflow-y: auto; padding:0.5rem; font-size:0.7rem">' +
+      memberListHTML +
+      '</div>' +
+      '</div>' +
+      '</div>';
+    return memberHTML;
+  }
+
+
+  /**
+   * Function that generates the html for a team members active tasks given their id
+   *
+   * @param {object} member: the dictionary of the member whose card we are creating
+   * @return {string} returns the html of the task list that was created
+   */
+  function generateMemberTaskList(member) {
+    var IDstr = member["TaskAssignedID"]
+    if (IDstr) {
+      var taskIDs = IDstr.split(',');
+    } else {
+      return '<li class="list-group-item">NO TASKS ASSIGNED</li>';
+    }
+    var taskHTML = "";
+    var listHTML = "";
+    var task, date, matterID, dateString, docketNo, docketLink, docketHTML;
+    for (var i = 0; i < taskIDs.length; i++) {
+      task = jsonData.tasks[taskIDs[i]];
+      date = new Date(task["DueDate"]);
+      // we only want to include this task in the list if its status matches task status above
+      if (!task["DateCompleted"]) { // task is active
+        dateString = date.toDateString()
+      } else { // task is completed so don't append to list
+        continue;
+      }
+      // get the docket no of the task (if one exists)
+      matterID = getTaskMatter(taskIDs[i]);
+      if (matterID) {
+        var url = jsonData.initParams["url"] + "?page=Matters";
+        docketNo = jsonData.matters[matterID]["DocketNo"];
+        docketLink = '<a href="' + url + '&initialMatterID=' + matterID + '">' + docketNo + '</a>';
+        docketHTML = '<div class="col-3" style="padding-top:0.75rem;padding-bottom:0.75rem;padding-right:0;padding-left:0">' + docketLink + '</div>';
+      } else {
+        docketHTML = "";
+      }
+      var bg; // set the class for the background color of each task item (white if viewed, gray if not yet viewed)
+      if (task["DateViewed"]) {
+        bg = "bg-white";
+      } else {
+        bg = "bg-light";
+      }
+      // get the html for this specific list element
+      taskHTML = '<li class="list-group-item hoverable ' + bg + '" id ="' + task.ID + '" style="text-align:left; padding:0" ><div class="row px-2"><div class="col" style="text-align:left; padding-top:0.75rem;padding-bottom:0.75rem;padding-right:0;padding-left:0.75rem" onclick="showTaskInfo(\'' + task.ID + '\')" data-toggle="modal" data-target="#modal-add-edit-task" >' + task.Title + '</div>' + docketHTML + '<div class="col"style="text-align:right; padding-top:0.75rem;padding-bottom:0.75rem;padding-right:0.75rem;padding-left:0" onclick="showTaskInfo(\'' + task.ID + '\')" data-toggle="modal" data-target="#modal-add-edit-task" >' + dateString + '</div></div></li>';
+      listHTML += taskHTML;
+
+    }
+    return listHTML;
+  }
+
+  /**
+   * Function that updates a members task list HTML
+   *
+   * @param {object} member: the dictionary of the member whose card we are creating
+   */
+  function updateMemberTaskList(member) {
+    // get HTML of list
+    var listHTML = generateMemberTaskList(member);
+    // add to page
+    var cardID = member["ID"] + '_List';
+    document.getElementById(cardID).innerHTML = listHTML;
+  }
+</script>

@@ -1,0 +1,271 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+  $(function () {
+    populateAssignedTasks();
+    populateResponsibleTasks();
+    updateDashboardPrivileges();
+  });
+
+  /**
+   * Function that updates the dashboard page based on the current users privileges
+   */
+  function updateDashboardPrivileges() {
+    // Hide all privilege based buttons
+    document.getElementById("addTaskTypeBtn").style.display = "none";
+
+    // Go through and show privilege-based buttons according to the user's privilege level
+    var userPriv = jsonData.user["Privileges"];
+    if (userPriv > 2) {
+      // Show level 3 privileges (add task type)
+      document.getElementById("addTaskTypeBtn").style.display = "inline-block";
+    }
+  }
+
+  /**
+   * Function that populates the welcome card with useful information
+   */
+  function populateWelcomeCard() {
+    var userID = jsonData.user["ID"];
+    var userAssignedTasks = jsonData.members[userID]["TaskAssignedID"];
+    if (userAssignedTasks) {
+      userAssignedTasks.split(",");
+      var numaAssignedTasks = userAssignedTasks.length;
+      // show number of assigned tasks
+      // show number of unviewed tasks
+      // show number of tasks due this week
+    }
+
+    // show weather
+  }
+
+  /**
+   * Function that populates the list of tasks assigned to the current user
+   */
+  function populateAssignedTasks() {
+    var userID = jsonData.user["ID"];
+    var userAssignedTasks = jsonData.members[userID]["TaskAssignedID"];
+    // Clear the search bar
+    document.getElementById("taskAssignedSearchValue").value = null;
+    // get the html for the userAssignedTasks list
+    var taskStr = getDashboardTaskStr(userAssignedTasks, "A");
+    $("div[id='memberAssignedTaskListDiv']").find('li').remove().end().append($(taskStr));
+  }
+
+  /**
+   * Function that populates the list of tasks that the current user is responsible for
+   */
+  function populateResponsibleTasks() {
+    var userID = jsonData.user["ID"];
+    var userResponsibleTasks = jsonData.members[userID]["TaskResponsibleID"];
+    // Clear the search bar
+    document.getElementById("taskResponsibleSearchValue").value = null;
+    // get the html for the userResponsibleTasks list
+    var taskStr = getDashboardTaskStr(userResponsibleTasks, "R");
+    $("div[id='memberResponsibleTaskListDiv']").find('li').remove().end().append($(taskStr));
+  }
+
+  /**
+   * Gets the HTML for the task lists to be displayed on the dashboard
+   *
+   * @param {string} IDstr: a comma separated list of task ids that we wish to display in this list
+   * @param {string} type: a char representing whether we are going to write this list in the assigned task or responsible task lists
+   */
+  function getDashboardTaskStr(IDstr, type) {
+    if (IDstr) {
+      var taskIDs = IDstr.split(',');
+    } else {
+      return '<li class="list-group-item hoverable">NO TASKS ASSIGNED</li>'
+    }
+    // determine whether we are trying to view the active tasks or completed tasks
+    var taskStatus;
+    if (type == 'A') {
+      taskStatus = document.getElementById("assignedTasksViewDropdown").value;
+    } else {
+      taskStatus = document.getElementById("responsibleTasksViewDropdown").value;
+    }
+    var taskHTML = "";
+    var listHTML = "";
+    var task, date, matterID, dateString;
+    var docketNo = "";
+    //var member = jsonData.members[jsonData.user["ID"]];
+    // append a <li> to the html for each task id
+    for (var i = 0; i < taskIDs.length; i++) {
+      task = jsonData.tasks[taskIDs[i]];
+      date = new Date(task["DueDate"]);
+      // we only want to include this task in the list if its status matches task status above
+      if (task["DateCompleted"] && taskStatus == "completed") { // task is completed and we want completed
+        date = new Date(task["DateCompleted"])
+        dateString = "Completed: " + date.toDateString();
+      } else if (!task["DateCompleted"] && taskStatus == "active") { // task is active and we want active
+        dateString = "Due: " + date.toDateString()
+      } else { // task completion does not match desired status
+        continue;
+      }
+      // get the docket no of the task (if one exists)
+      matterID = getTaskMatter(taskIDs[i]);
+      if (matterID) {
+        var url = jsonData.initParams["url"] + "?page=Matters";
+        docketNo = '<div class="col-2 px-0" style="text-align:center"><a href="' + url + '&initialMatterID=' + matterID + '">' + jsonData.matters[matterID]["DocketNo"] + '</a></div>';
+      } else {
+        docketNo = "";
+      }
+      // set the class for the background color of each task item (white if viewed, gray if not yet viewed)
+      var bg;
+      if (task["DateViewed"]) {
+        bg = "bg-white";
+      } else {
+        bg = "bg-light";
+      }
+      // get the html for this specific list element
+      taskHTML = '<li class="list-group-item px-0 ' + bg + ' hoverable" id ="' + type + "_" + task.ID + '" style="text-align:left"><div class="row"><div class="col pl-4" style="text-align:left" data-toggle="modal" data-target="#modal-add-edit-task" onclick = "showTaskInfo(\'' + task.ID + '\')">' + task.Title + '</div>' + docketNo + '<div class="col pr-4" style="text-align:right" data-toggle="modal" data-target="#modal-add-edit-task" onclick = "showTaskInfo(\'' + task.ID + '\')">' + dateString + '</div></div></li>';
+      if (taskStatus == "completed") { // add to the top of the list if we are viewing completed tasks
+        listHTML = taskHTML + listHTML;
+      } else { // add to the bottom of the list if we are viewing active tasks
+        listHTML += taskHTML;
+      }
+    }
+    return listHTML;
+  }
+
+  // ------------------------------------------------------- search task functions -------------------------------------------------------
+
+
+  /**
+   * Function that toggles whether the task search bar is visible or not, also resets the task lists
+   * 
+   * @param {string} listType: either "Assigned" or "Responsible" tell us which search bar we are toggling
+   */
+  function toggleTaskSearch(listType) {
+    var searchBar
+    if (listType == "Assigned") {
+      searchBar = document.getElementById("taskAssignedSearchBar");
+      //clear search value
+      document.getElementById("taskAssignedSearchValue").value = null;
+    } else {// list == "Responsible"
+      searchBar = document.getElementById("taskResponsibleSearchBar");
+      //clear search value
+      document.getElementById("taskResponsibleSearchValue").value = null;
+    }
+    if (searchBar.style.display == "none") { //searchBar is hidden
+      searchBar.style.display = "inline";
+    } else { //searchBar is shown
+      searchBar.style.display = "none";
+      resetSearch(listType);
+    }
+
+  }
+
+
+  /*
+   * Function that clears the given search bar and resets the matter lists
+   */
+  function resetSearch(listType) {
+    //clear search value
+    document.getElementById("task" + listType + "SearchValue").value = null;
+    // reset lists
+    if (listType == "Assigned") {
+      populateAssignedTasks();
+    } else {
+      populateResponsibleTasks();
+    }
+  }
+
+
+  /**
+   * Function to search the assigned list
+   */
+  function searchTaskAssigned() {
+    // Get the search term and search By
+    var searchTerm = document.getElementById("taskAssignedSearchValue").value;
+    var searchBy = document.getElementById("AssignedSearchBy").value;
+    // Generate the html to be put into the task list
+    var taskString = searchTaskListHelper(searchTerm, searchBy, "A");
+    // if the matter string is false, set it to show that there are no open matters
+    if (!taskString) {
+      taskString = '<li class="list-group-item hoverable">NO ASSIGNED TASKS</li>';
+    }
+    // Place the matter string into the html
+    $("div[id='memberAssignedTaskListDiv']").find('li').remove().end().append($(taskString));
+  }
+
+  /**
+   * Function to search the responsible list
+   */
+  function searchTaskResponsible() {
+    // Get the search term and search By
+    var searchTerm = document.getElementById("taskResponsibleSearchValue").value;
+    var searchBy = document.getElementById("ResponsibleSearchBy").value;
+    // Generate the html to be put into the task list
+    var taskString = searchTaskListHelper(searchTerm, searchBy, "R");
+    // if the matter string is false, set it to show that there are no open matters
+    if (!taskString) {
+      taskString = '<li class="list-group-item hoverable">NO RESPONSIBLE TASKS</li>';
+    }
+    // Place the matter string into the html
+    $("div[id='memberResponsibleTaskListDiv']").find('li').remove().end().append($(taskString));
+  }
+
+
+  /**
+   * Helper function to search through a list of matters and return the html for the appropriate results
+   *
+   * @param {string} searchTerm: the term being searched for
+   * @param {boolean} closed: a boolean representing whther or not we wish to search through closed matters or active matters
+   *                          - true: search only closed matters
+   *                          - false: search only active matters
+   * @return {string} returns the html for all of the list items that came up in the search
+   */
+  function searchTaskListHelper(searchTerm, searchBy, listType) {
+    // filter lists by search term and search by
+    var userID = jsonData.user["ID"];
+    var userTaskIDs;
+    if (listType == "A") {
+      userTaskIDs = jsonData.members[userID]["TaskAssignedID"];
+    } else { //ListType=="R"
+      userTaskIDs = jsonData.members[userID]["TaskResponsibleID"];
+    }
+    if (!userTaskIDs) {
+      return;
+    }
+    userTaskIDs = userTaskIDs.split(",");
+    var task, typeName, memberID, member, memberName;
+    var matchingIDs = [];
+    // iterate through each task id to see if it matches the search query
+    for (var i = 0; i < userTaskIDs.length; i++) {
+      task = jsonData.tasks[userTaskIDs[i]];
+      if (searchBy == "type") { // searching by task type
+        typeName = jsonData.taskTypes[task["TaskTypeID"]]["TaskTypeName"];
+        // if the query matches, add the id to the list
+        if (typeName.toLowerCase().includes(searchTerm.toLowerCase())) {
+          matchingIDs.push(userTaskIDs[i]);
+        }
+      } else if (searchBy == "title") { // searching by task title
+        // if the query matches, add the id to the list
+        if (task["Title"].toLowerCase().includes(searchTerm.toLowerCase())) {
+          matchingIDs.push(userTaskIDs[i]);
+        }
+      } else if (searchBy == "responsible") { // searching by responsible member
+        memberID = getTaskMember(userTaskIDs[i], "TaskResponsibleID");
+        member = jsonData.members[memberID];
+        memberName = member["FirstName"] + " " + member["LastName"];
+        // if the query matches, add the id to the list
+        if (memberName.toLowerCase().includes(searchTerm.toLowerCase())) {
+          matchingIDs.push(userTaskIDs[i]);
+        }
+      } else if (searchBy == "assigned") { // searching by assigned member
+        memberID = getTaskMember(userTaskIDs[i], "TaskAssignedID");
+        member = jsonData.members[memberID];
+        memberName = member["FirstName"] + " " + member["LastName"];
+        // if the query matches, add the id to the list
+        if (memberName.toLowerCase().includes(searchTerm.toLowerCase())) {
+          matchingIDs.push(userTaskIDs[i]);
+        }
+      }
+    }
+    var IDstr = matchingIDs.join(",");
+    // get HTML for list of tasks
+    var resultHTML = getDashboardTaskStr(IDstr, listType);
+    return resultHTML;
+  }
+
+</script>

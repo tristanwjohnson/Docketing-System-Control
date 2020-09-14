@@ -1,0 +1,123 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+  // when page loads 
+  $(function () {
+  });
+
+  /**
+   * Function that initializes the report modal when it is opened
+   */
+  function onOpenReportModal() {
+    // clear search results
+    document.getElementById("clientReportSearchValue").value = null;
+    // Get the list of all clients
+    var clients = Object.values(jsonData.clients);
+    // Filter the clients so that only active clients remain
+    clients = clients.filter(function (c) { return (c["Status"] == "Active"); });
+    // Sort the clients by their name
+    clients = clients.sort(function (c1, c2) { return c1["ClientName"].localeCompare(c2["ClientName"]); });
+    // generate HTML for client list in report modal
+    var reportListHTML = generateClientReportList(clients);
+    // add list to HTML of report modal
+    $("div[id='clientReportList']").find("div[class='list-group-item']").remove().end().append($(reportListHTML));
+  }
+
+  /**
+  * helper funtion to make HTML of list of clients for report modal
+  *
+  * @param {object} clients: an array of clients to be put into the list
+  * 
+  * @return {string} returns a string of the HTML for the client list
+  */
+  function generateClientReportList(clients) {
+    var reportListHTML = "";
+    var client, clientHTML;
+    for (var i = 0; i < clients.length; i++) {
+      client = clients[i];
+      clientHTML = '<div class="list-group-item">' +
+        '<div class="media align-items-center">' +
+        '<div class="media-body text-left">' +
+        '<h5 class="d-block text-limit mb-0">' + client["ClientName"] + '</h5>' +
+        '<span class="d-block text-sm text-muted"><a target="_blank" href="https://drive.google.com/drive/folders/' + client["FolderID"] + '">' + client["DocketCode"] + '</a></span>' +
+        '</div>';
+      if (client["MatterID"]) { // if the client has any matters give the option to generate a report
+        clientHTML += '<div class="media-body text-right">' +
+          '<button id ="' + client["ID"] + '_GenerateReportBtn" type="button" class="btn btn-sm btn-outline-primary" onclick="generateClientReport(\'' + client["ID"] + '\')">Generate Report</button>' +
+          '<button id ="' + client["ID"] + '_GenerateReportBtnLoading" type="button" class="btn btn-sm btn-outline-primary btn-icon" style="display:none" disabled>' +
+          '<span class="btn-inner--icon"><i class="fas fa-spinner fa-spin"></i></span>' +
+          '<span class="btn-inner--text">Generating Report</span>' +
+          '</button>' +
+          '<a target="_blank" id="' + client["ID"] + '_ReportLink"></a>' +
+          '</div>';
+      }
+      clientHTML += '</div></div>';
+      reportListHTML += clientHTML;
+    }
+    return reportListHTML;
+  }
+
+  /**
+   * Function to call the server to generate a report for a given client
+   *
+   * @param {string} clientID: the id of the client we wish to generate a report for
+   */
+  function generateClientReport(clientID) {
+    // start loading btns
+    document.getElementById(clientID + '_GenerateReportBtn').style.display = "none";
+    document.getElementById(clientID + '_GenerateReportBtnLoading').style.display = "inline-block";
+    // get client matters
+    var client = jsonData.clients[clientID];
+    var matterIDs = client["MatterID"];
+    matterIDs = matterIDs.split(",");
+    var matters = [];
+    for (var i = 0; i < matterIDs.length; i++) {
+      matters.push(jsonData.matters[matterIDs[i]]);
+    }
+    google.script.run.withSuccessHandler(onSuccessGenerateClientReport).withFailureHandler(onFailGenerateClientReport).generateClientReport(client, matters, jsonData.matterTypes, jsonData.matterTypeData);
+  }
+
+  /**
+   * onSuccess function to be called once a client report is successfully created
+   * 
+   * @param {object} infoList: list of information returned by server: [clientID, spreadSheet ID]
+   */
+  function onSuccessGenerateClientReport(infoList) {
+    var clientID = infoList[0];
+    var SSID = infoList[1];
+    // stop loading btns
+    document.getElementById(clientID + '_GenerateReportBtnLoading').style.display = "none";
+    // show link
+    document.getElementById(clientID + "_ReportLink").innerHTML = "View Report";
+    document.getElementById(clientID + "_ReportLink").href = 'https://docs.google.com/spreadsheets/d/' + SSID;
+  }
+
+  /**
+   * onFail function to be called if the derver failes to create a client report to alert the user of the failure
+   */
+  function onFailGenerateClientReport(err) {
+    alert("Failed To generate report, please refresh page: " + err);
+  }
+
+  /**
+   * search client list in modal and display search results 
+   */
+  function searchClientReport() {
+    var searchTerm = document.getElementById("clientReportSearchValue").value.toLowerCase();
+    var clients = Object.values(jsonData.clients);
+    // Filter the clients so that only active clients remain
+    clients = clients.filter(function (c) { return (c["Status"] == "Active"); });
+    // Sort the clients by their name
+    clients = clients.sort(function (c1, c2) { return c1["ClientName"].localeCompare(c2["ClientName"]); });
+    var clientResults = [];
+    // generate search results 
+    for (var i = 0; i < clients.length; i++) {
+      if (clients[i]["ClientName"].toLowerCase().includes(searchTerm) || clients[i]["DocketCode"].toLowerCase().includes(searchTerm)) {
+        clientResults.push(clients[i]);
+      }
+    }
+    // generate HTML for search results and add to UI
+    var reportListHTML = generateClientReportList(clientResults);
+    $("div[id='clientReportList']").find("div[class='list-group-item']").remove().end().append($(reportListHTML));
+  }
+
+</script>
