@@ -4,7 +4,7 @@
  */
 
 // global variables that reference the configuration spreadsheet (allows you to initialize properties)
-var configSSID = "1MyL3csK8w63rAE9fDK-pamiToTv6UUgdboe58X2oTy8";
+var configSSID = "-----";// link to database removed for public display - see what it contained by looking at properties called 
 var configSheetName = "configSheet";
 
 /**
